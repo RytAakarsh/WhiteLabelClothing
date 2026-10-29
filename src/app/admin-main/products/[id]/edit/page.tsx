@@ -1,0 +1,43 @@
+import React from 'react';
+import { notFound } from 'next/navigation';
+import ProductForm from '@/components/admin/ProductForm';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+export const revalidate = 0;
+
+interface EditProductPageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function EditProductPage({ params }: EditProductPageProps) {
+  const { id } = await params;
+  const adminClient = createAdminClient();
+
+  const { data: product } = await adminClient
+    .from('products')
+    .select(`
+      *,
+      variants:product_variants(*),
+      images:product_images(*)
+    `)
+    .eq('id', id)
+    .maybeSingle();
+
+  if (!product) {
+    notFound();
+  }
+
+  const { data: rawCategories } = await adminClient
+    .from('categories')
+    .select('*')
+    .order('sort_order', { ascending: true });
+
+  const categories = rawCategories || [];
+
+  return (
+    <ProductForm
+      initialProduct={product}
+      categories={categories as any}
+    />
+  );
+}
