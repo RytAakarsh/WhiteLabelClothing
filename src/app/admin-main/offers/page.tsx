@@ -62,7 +62,7 @@ export default function AdminOffersPage() {
       .select('product_id')
       .eq('offer_id', offer.id);
 
-    setSelectedProductIds(opData?.map((r) => r.product_id) || []);
+    setSelectedProductIds(opData?.map((r: any) => r.product_id) || []);
     setIsAdding(false);
   };
 

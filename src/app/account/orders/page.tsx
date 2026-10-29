@@ -73,7 +73,7 @@ export default function CustomerOrdersPage() {
               No Orders Found
             </h2>
             <p className="text-xs text-neutral-500 mb-6">
-              You haven't placed any orders with White Label Clothing yet.
+              You haven&apos;t placed any orders with White Label Clothing yet.
             </p>
             <Link
               href="/collections"

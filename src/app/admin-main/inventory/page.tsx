@@ -38,7 +38,7 @@ export default function AdminInventoryPage() {
     if (data) {
       setVariants(data);
       const stockMap: any = {};
-      data.forEach((v) => {
+      data.forEach((v: any) => {
         stockMap[v.id] = v.stock_quantity;
       });
       setNewStockMap(stockMap);

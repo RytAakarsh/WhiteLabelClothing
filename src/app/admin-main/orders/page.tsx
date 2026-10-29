@@ -46,7 +46,7 @@ export default function AdminOrdersPage() {
     if (data) {
       setOrders(data);
       if (selectedOrder) {
-        const updated = data.find((o) => o.id === selectedOrder.id);
+        const updated = data.find((o: any) => o.id === selectedOrder.id);
         if (updated) setSelectedOrder(updated);
       }
     }
