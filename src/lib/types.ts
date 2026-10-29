@@ -56,6 +56,7 @@ export interface Product {
   is_new_arrival: boolean;
   is_best_seller: boolean;
   is_offer_eligible: boolean;
+  is_demo?: boolean;
   sort_order: number;
   search_title: string | null;
   search_description: string | null;
@@ -136,6 +137,7 @@ export interface CartItemType {
   image: string;
   quantity: number;
   max_stock: number;
+  is_demo?: boolean;
 }
 
 export interface StoreSettings {

@@ -40,9 +40,9 @@ export default function Footer() {
               <Image
                 src="/images/brand-logo.png"
                 alt="White Label Clothing"
-                width={140}
-                height={140}
-                className="h-11 sm:h-12 w-auto object-contain max-w-[130px]"
+                width={455}
+                height={233}
+                className="h-12 sm:h-14 w-auto object-contain max-w-[160px]"
               />
             </Link>
             <p className="text-xs text-neutral-600 leading-relaxed italic font-serif">

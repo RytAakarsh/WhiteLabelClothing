@@ -37,6 +37,11 @@ export default function ProductCard({ product }: { product: Product }) {
 
         {/* Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
+          {product.is_demo && (
+            <span className="bg-neutral-900 text-white text-[9px] sm:text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5">
+              DEMO ITEM
+            </span>
+          )}
           {discountPercent > 0 && (
             <span className="bg-black text-white text-[9px] sm:text-[10px] font-semibold tracking-wider uppercase px-2 py-1">
               {discountPercent}% OFF

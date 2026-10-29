@@ -32,19 +32,20 @@ export function getPublicSupabaseConfig(): { url: string; key: string } {
   return { url, key };
 }
 
-export function getAdminSupabaseConfig(): { url: string; serviceRoleKey: string } {
-  const { url } = getPublicSupabaseConfig();
+export function getAdminSupabaseConfig(): { url: string; serviceRoleKey: string; isFallback: boolean } {
+  const { url, key } = getPublicSupabaseConfig();
   const serviceRoleKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.SUPABASE_SECRET_KEY;
 
   if (!serviceRoleKey) {
-    throw new Error(
-      `[Supabase Configuration Error]: Missing SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_KEY).\n` +
-      `This privileged key is required for server-side admin operations and must NOT be exposed to the browser.\n` +
-      `Please configure SUPABASE_SERVICE_ROLE_KEY in your Cloudflare Pages environment variables (or .env.local for local testing).`
+    console.warn(
+      `[Supabase Configuration Warning]: Missing SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_KEY).\n` +
+      `Falling back to public anonymous key for server queries. Some admin metrics may be restricted by RLS.\n` +
+      `To enable full admin bypass, set SUPABASE_SERVICE_ROLE_KEY in Cloudflare Pages dashboard (Settings > Environment variables).`
     );
+    return { url, serviceRoleKey: key, isFallback: true };
   }
 
-  return { url, serviceRoleKey };
+  return { url, serviceRoleKey, isFallback: false };
 }

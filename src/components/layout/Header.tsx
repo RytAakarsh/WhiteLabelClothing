@@ -6,7 +6,6 @@ import Image from 'next/image';
 import { Menu, Search, User, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/lib/context/CartContext';
 import { useAuth } from '@/lib/context/AuthContext';
-import AnnouncementBar from './AnnouncementBar';
 import MobileDrawer from './MobileDrawer';
 
 export default function Header() {
@@ -16,52 +15,52 @@ export default function Header() {
 
   return (
     <>
-      <AnnouncementBar />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#E5E5E5] transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 sm:h-20">
-            {/* Mobile Hamburger Menu */}
-            <div className="flex items-center md:hidden w-10">
+          <div className="grid grid-cols-3 items-center h-16 sm:h-20">
+            {/* Left Column: Mobile Hamburger or Desktop Navigation Links */}
+            <div className="flex items-center justify-start">
+              {/* Mobile Menu Button */}
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(true)}
-                className="p-2 -ml-2 text-black hover:opacity-60 transition"
+                className="p-2 -ml-2 text-black hover:opacity-60 transition md:hidden"
                 aria-label="Open navigation menu"
               >
                 <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
+
+              {/* Desktop Navigation */}
+              <nav className="hidden md:flex items-center space-x-6 lg:space-x-8">
+                <Link
+                  href="/collections"
+                  className="text-xs font-medium uppercase tracking-widest text-black hover:opacity-50 transition"
+                >
+                  Collections
+                </Link>
+                <Link
+                  href="/collections/sweatshirts"
+                  className="text-xs font-medium uppercase tracking-widest text-black hover:opacity-50 transition"
+                >
+                  Sweatshirts
+                </Link>
+                <Link
+                  href="/collections/jackets"
+                  className="text-xs font-medium uppercase tracking-widest text-black hover:opacity-50 transition"
+                >
+                  Jackets
+                </Link>
+                <Link
+                  href="/offers"
+                  className="text-xs font-medium uppercase tracking-widest text-black hover:opacity-50 transition"
+                >
+                  Offers
+                </Link>
+              </nav>
             </div>
 
-            {/* Desktop Navigation Links */}
-            <nav className="hidden md:flex items-center space-x-8">
-              <Link
-                href="/collections"
-                className="text-xs font-medium uppercase tracking-widest text-black hover:opacity-50 transition"
-              >
-                All Collections
-              </Link>
-              <Link
-                href="/collections/sweatshirts"
-                className="text-xs font-medium uppercase tracking-widest text-black hover:opacity-50 transition"
-              >
-                Sweatshirts
-              </Link>
-              <Link
-                href="/collections/jackets"
-                className="text-xs font-medium uppercase tracking-widest text-black hover:opacity-50 transition"
-              >
-                Jackets
-              </Link>
-              <Link
-                href="/offers"
-                className="text-xs font-medium uppercase tracking-widest text-black hover:opacity-50 transition"
-              >
-                Winter Offers
-              </Link>
-            </nav>
-
-            {/* Centered Brand Logo */}
-            <div className="flex-1 md:flex-initial flex justify-center items-center px-2">
+            {/* Center Column: Perfectly Centered Prominent Brand Logo */}
+            <div className="flex justify-center items-center">
               <Link
                 href="/"
                 className="inline-flex items-center justify-center py-1 transition hover:opacity-80"
@@ -70,16 +69,16 @@ export default function Header() {
                 <Image
                   src="/images/brand-logo.png"
                   alt="White Label Clothing"
-                  width={150}
-                  height={150}
+                  width={455}
+                  height={233}
                   priority
-                  className="h-10 sm:h-12 md:h-14 w-auto object-contain max-w-[120px] sm:max-w-[150px]"
+                  className="h-10 sm:h-12 md:h-14 lg:h-16 w-auto object-contain max-h-16 transition-all"
                 />
               </Link>
             </div>
 
-            {/* Right Action Icons */}
-            <div className="flex items-center space-x-3 sm:space-x-5">
+            {/* Right Column: Actions */}
+            <div className="flex items-center justify-end space-x-3 sm:space-x-5">
               <Link
                 href="/search"
                 className="p-2 text-black hover:opacity-60 transition"

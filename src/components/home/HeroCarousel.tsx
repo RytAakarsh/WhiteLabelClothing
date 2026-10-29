@@ -58,7 +58,7 @@ export default function HeroCarousel({ slides = DEFAULT_SLIDES }: { slides?: Sli
 
     autoPlayTimer.current = setInterval(() => {
       nextSlide();
-    }, 5000);
+    }, 3000);
 
     return () => {
       if (autoPlayTimer.current) clearInterval(autoPlayTimer.current);
@@ -109,7 +109,7 @@ export default function HeroCarousel({ slides = DEFAULT_SLIDES }: { slides?: Sli
           return (
             <div
               key={slide.id}
-              className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+              className={`absolute inset-0 transition-opacity duration-500 ease-in-out ${
                 isActive ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'
               }`}
             >

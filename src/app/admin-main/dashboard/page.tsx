@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getAdminSupabaseConfig } from '@/lib/supabase/config';
 import { formatPrice } from '@/lib/utils';
 import {
   Shirt,
@@ -20,46 +21,64 @@ import {
 export const revalidate = 0; // Fresh metrics on load
 
 export default async function AdminDashboardPage() {
-  const adminClient = createAdminClient();
+  let allProducts: any[] = [];
+  let variants: any[] = [];
+  let activeOffersCount = 0;
+  let totalCustomers = 0;
+  let allOrders: any[] = [];
+  let isFallbackMode = false;
 
-  // 1. Total products & 2. Total published products
-  const { data: allProducts } = await adminClient
-    .from('products')
-    .select('id, status, category_id, base_price, categories(slug)');
+  try {
+    const adminClient = createAdminClient();
+    const adminConfig = getAdminSupabaseConfig();
+    isFallbackMode = adminConfig.isFallback;
 
-  const totalProducts = allProducts?.length || 0;
-  const publishedProducts = allProducts?.filter((p) => p.status === 'published').length || 0;
+    // 1. Total products & 2. Total published products
+    const { data: productsData } = await adminClient
+      .from('products')
+      .select('id, status, category_id, base_price, categories(slug)');
+    allProducts = productsData || [];
+
+    // Variants stock analysis: 12. Low stock & 13. Out of stock
+    const { data: variantsData } = await adminClient
+      .from('product_variants')
+      .select('id, stock_quantity, size, product_id');
+    variants = variantsData || [];
+
+    // 14. Active offers
+    const { count: offersCount } = await adminClient
+      .from('offers')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true);
+    activeOffersCount = offersCount || 0;
+
+    // 11. Total registered customers
+    const { count: customersCount } = await adminClient
+      .from('profiles')
+      .select('*', { count: 'exact', head: true });
+    totalCustomers = customersCount || 0;
+
+    // Orders metrics
+    const { data: ordersData } = await adminClient
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
+    allOrders = ordersData || [];
+  } catch (err) {
+    console.error('[AdminDashboardPage] Error fetching dashboard telemetry:', err);
+  }
+
+  const totalProducts = allProducts.length;
+  const publishedProducts = allProducts.filter((p) => p.status === 'published').length;
 
   // 3. Sweatshirts & 4. Jackets
-  const sweatshirtCount = allProducts?.filter((p: any) => p.categories?.slug === 'sweatshirts').length || 0;
-  const jacketCount = allProducts?.filter((p: any) => p.categories?.slug === 'jackets').length || 0;
+  const sweatshirtCount = allProducts.filter((p: any) => p.categories?.slug === 'sweatshirts').length;
+  const jacketCount = allProducts.filter((p: any) => p.categories?.slug === 'jackets').length;
 
-  // Variants stock analysis: 12. Low stock & 13. Out of stock
-  const { data: variants } = await adminClient
-    .from('product_variants')
-    .select('id, stock_quantity, size, product_id');
+  const outOfStockCount = variants.filter((v) => v.stock_quantity === 0).length;
+  const lowStockCount = variants.filter((v) => v.stock_quantity > 0 && v.stock_quantity <= 3).length;
 
-  const outOfStockCount = variants?.filter((v) => v.stock_quantity === 0).length || 0;
-  const lowStockCount = variants?.filter((v) => v.stock_quantity > 0 && v.stock_quantity <= 3).length || 0;
-
-  // 14. Active offers
-  const { count: activeOffersCount } = await adminClient
-    .from('offers')
-    .select('*', { count: 'exact', head: true })
-    .eq('is_active', true);
-
-  // 11. Total registered customers
-  const { count: totalCustomers } = await adminClient
-    .from('profiles')
-    .select('*', { count: 'exact', head: true });
-
-  // Orders metrics: 5. Orders today (Asia/Kolkata), 6. Total orders, 7. Awaiting processing, 8. Shipped, 9. Completed, 10. Cancelled
-  const { data: allOrders } = await adminClient
-    .from('orders')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  const totalOrders = allOrders?.length || 0;
+  const totalOrders = allOrders.length;
 
   // Calculate "today" start in IST
   const now = new Date();
@@ -67,18 +86,29 @@ export default async function AdminDashboardPage() {
   const istNow = new Date(now.getTime() + istOffset);
   const startOfTodayIst = new Date(Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate()) - istOffset);
 
-  const ordersToday = allOrders?.filter((o) => new Date(o.created_at) >= startOfTodayIst).length || 0;
-  const pendingOrders = allOrders?.filter((o) => o.status === 'pending').length || 0;
-  const shippedOrders = allOrders?.filter((o) => o.status === 'shipped').length || 0;
-  const completedOrders = allOrders?.filter((o) => o.status === 'delivered').length || 0;
-  const cancelledOrders = allOrders?.filter((o) => o.status === 'cancelled').length || 0;
+  const ordersToday = allOrders.filter((o) => new Date(o.created_at) >= startOfTodayIst).length;
+  const pendingOrders = allOrders.filter((o) => o.status === 'pending').length;
+  const shippedOrders = allOrders.filter((o) => o.status === 'shipped').length;
+  const completedOrders = allOrders.filter((o) => o.status === 'delivered').length;
+  const cancelledOrders = allOrders.filter((o) => o.status === 'cancelled').length;
 
-  const grossRevenue = allOrders?.filter((o) => o.status !== 'cancelled').reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0;
+  const grossRevenue = allOrders.filter((o) => o.status !== 'cancelled').reduce((sum, o) => sum + (o.total_amount || 0), 0);
 
-  const recentOrders = allOrders?.slice(0, 5) || [];
+  const recentOrders = allOrders.slice(0, 5);
 
   return (
     <div className="space-y-8">
+      {isFallbackMode && (
+        <div className="p-4 bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Deployment Environment Notice:</strong> <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">SUPABASE_SERVICE_ROLE_KEY</code> is not configured in Cloudflare Pages environment variables. Store telemetry is currently restricted by Row Level Security. Add <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">SUPABASE_SERVICE_ROLE_KEY</code> in Cloudflare Pages Settings &gt; Environment variables to unlock privileged metrics.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-6 border-b border-[#E5E5E5] gap-4">
         <div>

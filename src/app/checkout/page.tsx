@@ -63,6 +63,12 @@ export default function CheckoutPage() {
       return;
     }
 
+    const hasDemoItems = items.some((i) => i.is_demo);
+    if (hasDemoItems) {
+      setErrorMsg('Your shopping bag contains demonstration catalog items. Real checkout and payments are disabled until production inventory is released.');
+      return;
+    }
+
     if (paymentMethod === 'online') {
       setErrorMsg('Online payment gateway integration (Razorpay/PhonePe) is currently pending merchant credential activation. Please select Cash on Delivery / UPI on Delivery for expedited processing.');
       return;
@@ -427,17 +433,23 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-[#E5E5E5] flex justify-between items-baseline">
-                <span className="text-sm font-semibold uppercase tracking-wider">Total Due</span>
-                <span className="text-xl font-bold text-black">{formatPrice(finalTotal)}</span>
-              </div>
+              {items.some((i) => i.is_demo) && (
+                <div className="p-3 bg-neutral-200 border border-neutral-300 text-neutral-800 text-xs">
+                  <span className="font-semibold block uppercase tracking-wider mb-1">Demonstration Items</span>
+                  Your bag contains demonstration garments for seasonal preview. Real ordering will be enabled when production inventory is released.
+                </div>
+              )}
 
               <button
                 type="submit"
-                disabled={submitting}
-                className="w-full py-4 bg-black text-white text-xs font-semibold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-neutral-800 transition"
+                disabled={submitting || items.some((i) => i.is_demo)}
+                className={`w-full py-4 text-xs font-semibold uppercase tracking-widest flex items-center justify-center gap-2 transition ${
+                  items.some((i) => i.is_demo)
+                    ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed'
+                    : 'bg-black text-white hover:bg-neutral-800'
+                }`}
               >
-                <span>{submitting ? 'Placing Order...' : 'Confirm & Place Order'}</span>
+                <span>{submitting ? 'Placing Order...' : items.some((i) => i.is_demo) ? 'Ordering Disabled for Demo Items' : 'Confirm & Place Order'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 

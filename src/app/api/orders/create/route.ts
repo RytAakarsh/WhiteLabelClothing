@@ -36,8 +36,22 @@ export async function POST(request: Request) {
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const randSuffix = Math.floor(1000 + Math.random() * 9000);
     const orderNumber = `WLC-${dateStr}-${randSuffix}`;
-
     const adminClient = createAdminClient();
+
+    // Demo Safeguard: Check if any item belongs to a demonstration product
+    const variantIds = items.map((i: any) => i.variant_id);
+    const { data: variantsWithProducts } = await adminClient
+      .from('product_variants')
+      .select('id, products(name, is_demo)')
+      .in('id', variantIds);
+
+    const hasDemoItem = variantsWithProducts?.some((v: any) => v.products?.is_demo === true);
+    if (hasDemoItem) {
+      return NextResponse.json(
+        { error: 'Demonstration catalog items cannot be purchased. Live checkout will be enabled when physical production inventory is formally released.' },
+        { status: 400 }
+      );
+    }
 
     // Call atomic PostgreSQL function create_order_with_inventory
     const { data: orderId, error: rpcError } = await adminClient.rpc('create_order_with_inventory', {
