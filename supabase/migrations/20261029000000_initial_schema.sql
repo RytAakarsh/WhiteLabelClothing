@@ -470,6 +470,7 @@ USING (
     )
 );
 
+DROP POLICY IF EXISTS "Admins can manage all payments" ON public.payments;
 CREATE POLICY "Admins can manage all payments"
 ON public.payments FOR ALL
 USING (public.is_admin())
@@ -486,6 +487,7 @@ USING (
     )
 );
 
+DROP POLICY IF EXISTS "Admins can manage order status history" ON public.order_status_history;
 CREATE POLICY "Admins can manage order status history"
 ON public.order_status_history FOR ALL
 USING (public.is_admin())
@@ -497,6 +499,7 @@ CREATE POLICY "Public can view store settings"
 ON public.store_settings FOR SELECT
 USING (true);
 
+DROP POLICY IF EXISTS "Admins can manage store settings" ON public.store_settings;
 CREATE POLICY "Admins can manage store settings"
 ON public.store_settings FOR ALL
 USING (public.is_admin())
@@ -507,6 +510,7 @@ CREATE POLICY "Public can view enabled homepage sections"
 ON public.homepage_sections FOR SELECT
 USING (is_enabled = true OR public.is_admin());
 
+DROP POLICY IF EXISTS "Admins can manage homepage sections" ON public.homepage_sections;
 CREATE POLICY "Admins can manage homepage sections"
 ON public.homepage_sections FOR ALL
 USING (public.is_admin())
