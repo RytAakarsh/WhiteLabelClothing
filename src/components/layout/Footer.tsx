@@ -36,12 +36,13 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
           {/* Brand Column */}
           <div className="space-y-4 md:col-span-1">
-            <Link href="/" className="relative block h-10 w-36">
+            <Link href="/" className="inline-block py-1 hover:opacity-80 transition" aria-label="White Label Clothing Home">
               <Image
                 src="/images/brand-logo.png"
                 alt="White Label Clothing"
-                fill
-                className="object-contain"
+                width={140}
+                height={140}
+                className="h-11 sm:h-12 w-auto object-contain max-w-[130px]"
               />
             </Link>
             <p className="text-xs text-neutral-600 leading-relaxed italic font-serif">

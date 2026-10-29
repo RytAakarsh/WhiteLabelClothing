@@ -21,14 +21,14 @@ export default function Header() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 sm:h-20">
             {/* Mobile Hamburger Menu */}
-            <div className="flex items-center md:hidden">
+            <div className="flex items-center md:hidden w-10">
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(true)}
                 className="p-2 -ml-2 text-black hover:opacity-60 transition"
                 aria-label="Open navigation menu"
               >
-                <Menu className="w-6 h-6" />
+                <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
 
@@ -61,15 +61,19 @@ export default function Header() {
             </nav>
 
             {/* Centered Brand Logo */}
-            <div className="flex-1 md:flex-initial flex justify-center">
-              <Link href="/" className="relative block h-10 w-32 sm:h-12 sm:w-40 transition hover:opacity-80">
+            <div className="flex-1 md:flex-initial flex justify-center items-center px-2">
+              <Link
+                href="/"
+                className="inline-flex items-center justify-center py-1 transition hover:opacity-80"
+                aria-label="White Label Clothing Home"
+              >
                 <Image
                   src="/images/brand-logo.png"
                   alt="White Label Clothing"
-                  fill
-                  sizes="(max-width: 640px) 128px, 160px"
-                  className="object-contain"
+                  width={150}
+                  height={150}
                   priority
+                  className="h-10 sm:h-12 md:h-14 w-auto object-contain max-w-[120px] sm:max-w-[150px]"
                 />
               </Link>
             </div>

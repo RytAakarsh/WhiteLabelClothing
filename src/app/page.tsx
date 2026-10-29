@@ -33,19 +33,21 @@ export default async function HomePage() {
   const newArrivals = products.filter((p) => p.is_new_arrival);
   const bestSellers = products.filter((p) => p.is_best_seller);
   const offerProducts = products.filter((p) => p.is_offer_eligible && p.compare_at_price && p.compare_at_price > p.base_price);
+  const sweatshirtProducts = products.filter((p) => (p as any).category?.slug === 'sweatshirts');
+  const jacketProducts = products.filter((p) => (p as any).category?.slug === 'jackets');
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      {/* A & B. Announcement bar & Header */}
+      {/* 1 & 2. Announcement bar & Header */}
       <Header />
 
       <main className="flex-1">
-        {/* C. Campaign Hero */}
+        {/* 3. Campaign Hero Carousel */}
         <HeroCarousel />
 
-        {/* D. Shop by Category */}
+        {/* 4. Shop by Category */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-          <div className="text-center mb-12">
+          <div className="text-center mb-10 sm:mb-14">
             <span className="text-[10px] sm:text-xs uppercase tracking-widest text-neutral-400 font-semibold block mb-2">
               Curated Monoliths
             </span>
@@ -115,106 +117,187 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* E. Featured Products */}
-        <section className="bg-[#F7F7F7] py-16 sm:py-24 border-y border-[#E5E5E5]">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 pb-4 border-b border-[#E5E5E5] gap-4">
-              <div>
-                <span className="text-[10px] sm:text-xs uppercase tracking-widest text-neutral-400 font-semibold block mb-1">
-                  Hand-Selected
-                </span>
-                <h2 className="text-2xl sm:text-3xl font-serif uppercase tracking-wider text-black">
-                  Featured Collection
-                </h2>
-              </div>
-              <Link
-                href="/collections"
-                className="text-xs uppercase tracking-widest font-semibold text-black hover:opacity-60 transition inline-flex items-center gap-1.5"
-              >
-                View All <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-            <ProductGrid
-              products={featuredProducts.length > 0 ? featuredProducts : products.slice(0, 4)}
-              emptyMessage="Products are currently being curated in the admin panel. Published items will appear here."
-            />
-          </div>
-        </section>
-
-        {/* F. New Arrivals */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 pb-4 border-b border-[#E5E5E5] gap-4">
-            <div>
-              <div className="flex items-center gap-1.5 text-black mb-1">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span className="text-[10px] sm:text-xs uppercase tracking-widest font-semibold">Latest Release</span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-serif uppercase tracking-wider text-black">
-                New Arrivals
+        {/* Dynamic Product Sections or Luxury Empty Curation */}
+        {products.length === 0 ? (
+          <section className="bg-[#F7F7F7] py-16 sm:py-24 border-y border-[#E5E5E5]">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+              <span className="text-[10px] sm:text-xs uppercase tracking-widest text-neutral-400 font-semibold block mb-2">
+                Winter 2026 Curation
+              </span>
+              <h2 className="text-2xl sm:text-4xl font-serif uppercase tracking-wider text-black mb-4">
+                The Monolith Collection
               </h2>
-            </div>
-            <Link
-              href="/collections?sort=newest"
-              className="text-xs uppercase tracking-widest font-semibold text-black hover:opacity-60 transition inline-flex items-center gap-1.5"
-            >
-              See All New <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          <ProductGrid
-            products={newArrivals.length > 0 ? newArrivals : products.slice(0, 4)}
-            emptyMessage="New season arrivals will appear here once published from the admin panel."
-          />
-        </section>
-
-        {/* G. Best Sellers (if any designated or data exists) */}
-        {bestSellers.length > 0 && (
-          <section className="bg-white py-16 sm:py-24 border-t border-[#E5E5E5]">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex items-center gap-2 mb-2">
-                <Flame className="w-4 h-4 text-black" />
-                <span className="text-[10px] sm:text-xs uppercase tracking-widest text-neutral-400 font-semibold">
-                  Most Coveted
-                </span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-serif uppercase tracking-wider text-black mb-10">
-                Best Sellers
-              </h2>
-              <ProductGrid products={bestSellers} />
-            </div>
-          </section>
-        )}
-
-        {/* H. Active Offers */}
-        {offerProducts.length > 0 && (
-          <section className="bg-[#F7F7F7] py-16 sm:py-24 border-t border-[#E5E5E5]">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 pb-4 border-b border-[#E5E5E5] gap-4">
-                <div>
-                  <div className="flex items-center gap-1.5 text-black mb-1">
-                    <Tag className="w-3.5 h-3.5" />
-                    <span className="text-[10px] sm:text-xs uppercase tracking-widest font-semibold">Limited Campaign</span>
-                  </div>
-                  <h2 className="text-2xl sm:text-3xl font-serif uppercase tracking-wider text-black">
-                    Winter Offers
-                  </h2>
-                </div>
+              <p className="text-xs sm:text-sm text-neutral-500 max-w-lg mx-auto leading-relaxed mb-8">
+                Architectural silhouettes engineered in ultra-heavyweight cotton fleece and technical outerwear.
+                Our initial catalog of twelve limited designs is currently being prepared for release.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                 <Link
-                  href="/offers"
-                  className="text-xs uppercase tracking-widest font-semibold text-black hover:opacity-60 transition inline-flex items-center gap-1.5"
+                  href="/collections/sweatshirts"
+                  className="w-full sm:w-auto px-8 py-3.5 bg-black text-white text-xs uppercase tracking-widest font-semibold hover:bg-neutral-800 transition"
                 >
-                  View All Offers <ArrowRight className="w-3.5 h-3.5" />
+                  Explore Sweatshirts
+                </Link>
+                <Link
+                  href="/collections/jackets"
+                  className="w-full sm:w-auto px-8 py-3.5 bg-white border border-black text-black text-xs uppercase tracking-widest font-semibold hover:bg-neutral-100 transition"
+                >
+                  Explore Jackets
                 </Link>
               </div>
-
-              <ProductGrid products={offerProducts} />
             </div>
           </section>
+        ) : (
+          <>
+            {/* 5. Premium Sweatshirts Section */}
+            {sweatshirtProducts.length > 0 && (
+              <section className="bg-[#F7F7F7] py-16 sm:py-24 border-y border-[#E5E5E5]">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                  <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 pb-4 border-b border-[#E5E5E5] gap-4">
+                    <div>
+                      <span className="text-[10px] sm:text-xs uppercase tracking-widest text-neutral-400 font-semibold block mb-1">
+                        Heavyweight Edition
+                      </span>
+                      <h2 className="text-2xl sm:text-3xl font-serif uppercase tracking-wider text-black">
+                        Premium Sweatshirts
+                      </h2>
+                    </div>
+                    <Link
+                      href="/collections/sweatshirts"
+                      className="text-xs uppercase tracking-widest font-semibold text-black hover:opacity-60 transition inline-flex items-center gap-1.5"
+                    >
+                      View All Sweatshirts <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                  <ProductGrid products={sweatshirtProducts.slice(0, 4)} />
+                </div>
+              </section>
+            )}
+
+            {/* 6. Premium Jackets Section */}
+            {jacketProducts.length > 0 && (
+              <section className="bg-white py-16 sm:py-24 border-b border-[#E5E5E5]">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                  <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 pb-4 border-b border-[#E5E5E5] gap-4">
+                    <div>
+                      <span className="text-[10px] sm:text-xs uppercase tracking-widest text-neutral-400 font-semibold block mb-1">
+                        Tactile Outerwear
+                      </span>
+                      <h2 className="text-2xl sm:text-3xl font-serif uppercase tracking-wider text-black">
+                        Premium Jackets
+                      </h2>
+                    </div>
+                    <Link
+                      href="/collections/jackets"
+                      className="text-xs uppercase tracking-widest font-semibold text-black hover:opacity-60 transition inline-flex items-center gap-1.5"
+                    >
+                      View All Jackets <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                  <ProductGrid products={jacketProducts.slice(0, 4)} />
+                </div>
+              </section>
+            )}
+
+            {/* 7. Featured Collection */}
+            {featuredProducts.length > 0 && (
+              <section className="bg-[#F7F7F7] py-16 sm:py-24 border-b border-[#E5E5E5]">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                  <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 pb-4 border-b border-[#E5E5E5] gap-4">
+                    <div>
+                      <span className="text-[10px] sm:text-xs uppercase tracking-widest text-neutral-400 font-semibold block mb-1">
+                        Hand-Selected
+                      </span>
+                      <h2 className="text-2xl sm:text-3xl font-serif uppercase tracking-wider text-black">
+                        Featured Collection
+                      </h2>
+                    </div>
+                    <Link
+                      href="/collections"
+                      className="text-xs uppercase tracking-widest font-semibold text-black hover:opacity-60 transition inline-flex items-center gap-1.5"
+                    >
+                      View All <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                  <ProductGrid products={featuredProducts.slice(0, 4)} />
+                </div>
+              </section>
+            )}
+
+            {/* 8. New Arrivals */}
+            {newArrivals.length > 0 && (
+              <section className="bg-white py-16 sm:py-24 border-b border-[#E5E5E5]">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                  <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 pb-4 border-b border-[#E5E5E5] gap-4">
+                    <div>
+                      <div className="flex items-center gap-1.5 text-black mb-1">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span className="text-[10px] sm:text-xs uppercase tracking-widest font-semibold">Latest Release</span>
+                      </div>
+                      <h2 className="text-2xl sm:text-3xl font-serif uppercase tracking-wider text-black">
+                        New Arrivals
+                      </h2>
+                    </div>
+                    <Link
+                      href="/collections?sort=newest"
+                      className="text-xs uppercase tracking-widest font-semibold text-black hover:opacity-60 transition inline-flex items-center gap-1.5"
+                    >
+                      See All New <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                  <ProductGrid products={newArrivals.slice(0, 4)} />
+                </div>
+              </section>
+            )}
+
+            {/* Best Sellers (if any) */}
+            {bestSellers.length > 0 && (
+              <section className="bg-white py-16 sm:py-24 border-b border-[#E5E5E5]">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Flame className="w-4 h-4 text-black" />
+                    <span className="text-[10px] sm:text-xs uppercase tracking-widest text-neutral-400 font-semibold">
+                      Most Coveted
+                    </span>
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-serif uppercase tracking-wider text-black mb-10">
+                    Best Sellers
+                  </h2>
+                  <ProductGrid products={bestSellers} />
+                </div>
+              </section>
+            )}
+
+            {/* 9. Active Offers */}
+            {offerProducts.length > 0 && (
+              <section className="bg-[#F7F7F7] py-16 sm:py-24 border-b border-[#E5E5E5]">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                  <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 pb-4 border-b border-[#E5E5E5] gap-4">
+                    <div>
+                      <div className="flex items-center gap-1.5 text-black mb-1">
+                        <Tag className="w-3.5 h-3.5" />
+                        <span className="text-[10px] sm:text-xs uppercase tracking-widest font-semibold">Limited Campaign</span>
+                      </div>
+                      <h2 className="text-2xl sm:text-3xl font-serif uppercase tracking-wider text-black">
+                        Winter Offers
+                      </h2>
+                    </div>
+                    <Link
+                      href="/offers"
+                      className="text-xs uppercase tracking-widest font-semibold text-black hover:opacity-60 transition inline-flex items-center gap-1.5"
+                    >
+                      View All Offers <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                  <ProductGrid products={offerProducts.slice(0, 4)} />
+                </div>
+              </section>
+            )}
+          </>
         )}
 
-        {/* I. Brand Statement */}
-        <section className="border-t border-[#E5E5E5] bg-black text-white py-24 sm:py-32 px-4 text-center">
+        {/* 10. Brand Statement */}
+        <section className="border-t border-[#E5E5E5] bg-black text-white py-20 sm:py-28 px-4 text-center">
           <div className="max-w-3xl mx-auto space-y-6">
             <span className="text-[10px] sm:text-xs uppercase tracking-widest text-neutral-400 font-semibold block">
               White Label Clothing
@@ -238,7 +321,7 @@ export default async function HomePage() {
         </section>
       </main>
 
-      {/* J. Footer */}
+      {/* 11. Footer */}
       <Footer />
     </div>
   );

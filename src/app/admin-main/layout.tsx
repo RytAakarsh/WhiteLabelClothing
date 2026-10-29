@@ -79,14 +79,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="relative h-7 w-24">
+          <Link href="/admin-main/dashboard" className="inline-block py-0.5" aria-label="Admin Dashboard">
             <Image
               src="/images/brand-logo.png"
               alt="White Label"
-              fill
-              className="object-contain"
+              width={100}
+              height={100}
+              className="h-7 w-auto object-contain max-w-[100px]"
             />
-          </div>
+          </Link>
         </div>
         <span className="text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5 bg-black text-white">
           Admin
@@ -103,14 +104,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <aside className="fixed inset-y-0 left-0 w-3/4 max-w-xs bg-white border-r border-[#E5E5E5] p-6 flex flex-col justify-between shadow-2xl animate-in slide-in-from-left">
             <div>
               <div className="flex items-center justify-between pb-6 border-b border-[#E5E5E5] mb-6">
-                <div className="relative h-8 w-28">
+                <Link href="/admin-main/dashboard" className="inline-block py-0.5" aria-label="Admin Dashboard">
                   <Image
                     src="/images/brand-logo.png"
                     alt="White Label"
-                    fill
-                    className="object-contain"
+                    width={100}
+                    height={100}
+                    className="h-8 w-auto object-contain max-w-[100px]"
                   />
-                </div>
+                </Link>
                 <button
                   onClick={() => setMobileNavOpen(false)}
                   className="p-1 text-black"
@@ -171,12 +173,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div>
           {/* Logo & Console Title */}
           <div className="pb-6 border-b border-[#E5E5E5] mb-6">
-            <Link href="/admin-main/dashboard" className="relative block h-9 w-32 mb-2">
+            <Link href="/admin-main/dashboard" className="inline-block mb-3 py-0.5 hover:opacity-80 transition" aria-label="Admin Dashboard">
               <Image
                 src="/images/brand-logo.png"
                 alt="White Label Clothing"
-                fill
-                className="object-contain"
+                width={130}
+                height={130}
+                className="h-10 w-auto object-contain max-w-[130px]"
               />
             </Link>
             <div className="flex items-center gap-2">

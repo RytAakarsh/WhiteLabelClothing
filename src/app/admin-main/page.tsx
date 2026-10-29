@@ -60,12 +60,13 @@ export default function AdminLoginPage() {
       <div className="max-w-md w-full bg-white border border-[#E5E5E5] p-8 sm:p-10 shadow-sm">
         {/* Brand Logo */}
         <div className="text-center mb-8">
-          <div className="relative h-12 w-36 mx-auto mb-4">
+          <div className="flex justify-center mb-4">
             <Image
               src="/images/brand-logo.png"
               alt="White Label Clothing"
-              fill
-              className="object-contain"
+              width={140}
+              height={140}
+              className="h-12 w-auto object-contain max-w-[140px]"
               priority
             />
           </div>

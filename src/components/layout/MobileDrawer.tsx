@@ -55,12 +55,13 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
       >
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-[#E5E5E5]">
-          <Link href="/" onClick={onClose} className="relative w-28 h-8">
+          <Link href="/" onClick={onClose} className="inline-block py-1 hover:opacity-80 transition" aria-label="White Label Clothing Home">
             <Image
               src="/images/brand-logo.png"
               alt="White Label Clothing"
-              fill
-              className="object-contain"
+              width={120}
+              height={120}
+              className="h-8 w-auto object-contain max-w-[110px]"
             />
           </Link>
           <button

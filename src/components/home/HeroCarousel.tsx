@@ -103,7 +103,7 @@ export default function HeroCarousel({ slides = DEFAULT_SLIDES }: { slides?: Sli
       aria-label="Campaign Hero Carousel"
     >
       {/* Slides Container */}
-      <div className="relative w-full aspect-[21/9] min-h-[280px] sm:min-h-[420px] md:min-h-[520px] lg:min-h-[640px]">
+      <div className="relative w-full aspect-[3/1] max-w-[1920px] mx-auto overflow-hidden">
         {slides.map((slide, index) => {
           const isActive = index === currentIndex;
           return (
@@ -124,8 +124,8 @@ export default function HeroCarousel({ slides = DEFAULT_SLIDES }: { slides?: Sli
                   alt={slide.title}
                   fill
                   priority={index === 0}
-                  className="object-cover md:object-contain object-center"
-                  sizes="(max-width: 768px) 100vw, 100vw"
+                  className="object-contain md:object-cover lg:object-contain object-center"
+                  sizes="(max-width: 1920px) 100vw, 1920px"
                 />
               </Link>
             </div>
@@ -133,33 +133,33 @@ export default function HeroCarousel({ slides = DEFAULT_SLIDES }: { slides?: Sli
         })}
       </div>
 
-      {/* Subtle Controls */}
+      {/* Responsive Navigation Controls */}
       <button
         onClick={prevSlide}
-        className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/80 hover:bg-white text-black flex items-center justify-center backdrop-blur-xs transition shadow-md opacity-80 hover:opacity-100"
+        className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-white/80 hover:bg-white text-black flex items-center justify-center backdrop-blur-xs transition shadow-md opacity-75 hover:opacity-100"
         aria-label="Previous slide"
       >
-        <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+        <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
       </button>
 
       <button
         onClick={nextSlide}
-        className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/80 hover:bg-white text-black flex items-center justify-center backdrop-blur-xs transition shadow-md opacity-80 hover:opacity-100"
+        className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-white/80 hover:bg-white text-black flex items-center justify-center backdrop-blur-xs transition shadow-md opacity-75 hover:opacity-100"
         aria-label="Next slide"
       >
-        <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+        <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
       </button>
 
       {/* Indicators */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center space-x-2">
+      <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center space-x-1.5 sm:space-x-2">
         {slides.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentIndex(index)}
-            className={`transition-all duration-300 h-1.5 rounded-full ${
+            className={`transition-all duration-300 h-1 sm:h-1.5 rounded-full ${
               index === currentIndex
-                ? 'w-8 bg-white'
-                : 'w-2 bg-white/40 hover:bg-white/70'
+                ? 'w-5 sm:w-8 bg-white'
+                : 'w-1.5 sm:w-2 bg-white/40 hover:bg-white/70'
             }`}
             aria-label={`Go to slide ${index + 1}`}
           />

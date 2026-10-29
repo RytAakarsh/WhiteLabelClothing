@@ -83,12 +83,14 @@ function LoginForm() {
     <div className="max-w-md w-full mx-auto p-6 sm:p-8 bg-white border border-[#E5E5E5] my-12">
       {/* Brand Header */}
       <div className="text-center mb-8">
-        <Link href="/" className="relative block h-10 w-32 mx-auto mb-4">
+        <Link href="/" className="inline-block mx-auto mb-4 hover:opacity-80 transition" aria-label="White Label Clothing Home">
           <Image
             src="/images/brand-logo.png"
             alt="White Label Clothing"
-            fill
-            className="object-contain"
+            width={140}
+            height={140}
+            className="h-12 w-auto object-contain mx-auto max-w-[130px]"
+            priority
           />
         </Link>
         <h1 className="text-xl font-serif uppercase tracking-wider text-black">
