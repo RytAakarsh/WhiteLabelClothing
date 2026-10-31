@@ -90,10 +90,19 @@ export default function CustomerOrdersPage() {
                 className="p-6 bg-[#F7F7F7] border border-[#E5E5E5] flex flex-col sm:flex-row justify-between gap-6"
               >
                 <div className="space-y-2">
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono font-semibold text-sm text-black">{order.order_number}</span>
                     <span className="text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5 bg-black text-white">
                       {order.status}
+                    </span>
+                    <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-xs ${
+                      order.payment_status === 'paid' || order.settlement_status === 'reconciled'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : order.payment_status === 'awaiting_verification' || order.settlement_status === 'observed'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-neutral-200 text-neutral-800'
+                    }`}>
+                      {order.payment_gateway === 'youpi' ? 'UPI' : 'COD'}: {order.settlement_status || order.payment_status}
                     </span>
                   </div>
                   <p className="text-xs text-neutral-500">
@@ -102,6 +111,11 @@ export default function CustomerOrdersPage() {
                       month: 'short',
                       year: 'numeric'
                     })}
+                    {order.payment_reference && (
+                      <span className="ml-2 font-mono text-[11px] text-neutral-600">
+                        · UTR: {order.payment_reference}
+                      </span>
+                    )}
                   </p>
                   <div className="pt-2">
                     <p className="text-xs font-medium text-black">

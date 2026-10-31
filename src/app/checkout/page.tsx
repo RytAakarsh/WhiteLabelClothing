@@ -26,7 +26,7 @@ export default function CheckoutPage() {
   const [postalCode, setPostalCode] = useState('');
   const [country, setCountry] = useState('India');
   const [instructions, setInstructions] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'upi' | 'card_pending'>('cod');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [idempotencyKey] = useState<string>(() => {
@@ -71,14 +71,60 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (paymentMethod === 'online') {
-      setErrorMsg('Online payment gateway integration (Razorpay/PhonePe) is currently pending merchant credential activation. Please select Cash on Delivery / UPI on Delivery for expedited processing.');
+    if (paymentMethod === 'card_pending') {
+      setErrorMsg('Credit/Debit Card gateway integration is currently pending merchant credential activation. Please select Pay Online via UPI or Cash on Delivery.');
       return;
     }
 
     setSubmitting(true);
 
     try {
+      if (paymentMethod === 'upi') {
+        const response = await fetch('/api/payments/youpi/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customer_name: fullName.trim(),
+            customer_email: email.trim(),
+            customer_phone: phone.trim(),
+            shipping_address: {
+              full_name: fullName.trim(),
+              phone: phone.trim(),
+              address_line1: addressLine1.trim(),
+              address_line2: addressLine2.trim() || undefined,
+              city: city.trim(),
+              state: state.trim(),
+              postal_code: postalCode.trim(),
+              country: country.trim(),
+              delivery_instructions: instructions.trim() || undefined,
+            },
+            items: items.map((i) => ({
+              variant_id: i.variant_id,
+              quantity: i.quantity,
+            })),
+            notes: instructions.trim(),
+            idempotency_key: idempotencyKey,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'Failed to initialize UPI payment session.');
+        }
+
+        clearCart();
+
+        if (data.checkout_url) {
+          window.location.href = data.checkout_url;
+          return;
+        } else {
+          router.push(`/checkout/confirmation/${data.order_number}`);
+          return;
+        }
+      }
+
+      // Default: Cash on Delivery flow
       const response = await fetch('/api/orders/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -335,6 +381,7 @@ export default function CheckoutPage() {
                 3. Payment Method
               </h2>
               <div className="space-y-3">
+                {/* 1. Cash on Delivery */}
                 <label className={`block p-4 border cursor-pointer transition ${
                   paymentMethod === 'cod' ? 'border-black bg-[#F7F7F7]' : 'border-[#E5E5E5] hover:border-neutral-400'
                 }`}>
@@ -348,34 +395,69 @@ export default function CheckoutPage() {
                       className="accent-black"
                     />
                     <div>
-                      <span className="text-xs font-semibold uppercase tracking-wider text-black block">
-                        Cash on Delivery / UPI upon Delivery
-                      </span>
-                      <span className="text-[11px] text-neutral-500">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-black block">
+                          Cash on Delivery (Pay at Doorstep)
+                        </span>
+                        <span className="text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 bg-neutral-200 text-neutral-800 rounded-xs">
+                          Default
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-neutral-500 block mt-0.5">
                         Pay cash or scan courier UPI QR code upon arrival at your doorstep.
                       </span>
                     </div>
                   </div>
                 </label>
 
+                {/* 2. Pay Online via UPI */}
                 <label className={`block p-4 border cursor-pointer transition ${
-                  paymentMethod === 'online' ? 'border-black bg-[#F7F7F7]' : 'border-[#E5E5E5] hover:border-neutral-400 opacity-60'
+                  paymentMethod === 'upi' ? 'border-black bg-[#F7F7F7]' : 'border-[#E5E5E5] hover:border-neutral-400'
                 }`}>
                   <div className="flex items-center gap-3">
                     <input
                       type="radio"
                       name="payment_method"
-                      value="online"
-                      checked={paymentMethod === 'online'}
-                      onChange={() => setPaymentMethod('online')}
+                      value="upi"
+                      checked={paymentMethod === 'upi'}
+                      onChange={() => setPaymentMethod('upi')}
+                      className="accent-black"
+                    />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-black block">
+                          Pay Online — Instant UPI & QR
+                        </span>
+                        <span className="text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 bg-black text-white rounded-xs">
+                          Recommended
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-neutral-500 block mt-0.5">
+                        Scan dynamic UPI QR code or pay instantly with Google Pay, PhonePe, Paytm, or BHIM. Zero extra processing surcharge.
+                      </span>
+                    </div>
+                  </div>
+                </label>
+
+                {/* 3. Cards & NetBanking (Pending) */}
+                <label className={`block p-4 border cursor-pointer transition ${
+                  paymentMethod === 'card_pending' ? 'border-black bg-[#F7F7F7]' : 'border-[#E5E5E5] hover:border-neutral-400 opacity-60'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name="payment_method"
+                      value="card_pending"
+                      checked={paymentMethod === 'card_pending'}
+                      onChange={() => setPaymentMethod('card_pending')}
                       className="accent-black"
                     />
                     <div>
                       <span className="text-xs font-semibold uppercase tracking-wider text-black block">
-                        Online Cards & NetBanking (Pending Activation)
+                        Credit / Debit Cards & NetBanking (Pending Activation)
                       </span>
-                      <span className="text-[11px] text-neutral-500">
-                        Online payment gateway credentials currently pending business onboarding.
+                      <span className="text-[11px] text-neutral-500 block mt-0.5">
+                        Direct merchant card gateway onboarding in progress. Please use UPI or COD.
                       </span>
                     </div>
                   </div>
@@ -443,7 +525,15 @@ export default function CheckoutPage() {
                 disabled={submitting}
                 className="w-full py-4 text-xs font-semibold uppercase tracking-widest flex items-center justify-center gap-2 transition bg-black text-white hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                <span>{submitting ? 'Placing Order...' : 'Confirm & Place Order'}</span>
+                <span>
+                  {submitting
+                    ? paymentMethod === 'upi'
+                      ? 'Connecting to UPI Gateway...'
+                      : 'Placing Order...'
+                    : paymentMethod === 'upi'
+                    ? 'Proceed to UPI Payment'
+                    : 'Confirm & Place Order (COD)'}
+                </span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 

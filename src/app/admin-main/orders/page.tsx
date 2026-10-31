@@ -212,8 +212,28 @@ export default function AdminOrdersPage() {
                       {o.status}
                     </span>
                   </td>
-                  <td className="py-3 px-4 uppercase text-[10px] font-semibold text-neutral-600">
-                    {o.payment_status}
+                  <td className="py-3 px-4">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] uppercase font-bold tracking-wider px-1 bg-neutral-200 text-neutral-800 rounded-xs">
+                          {o.payment_gateway === 'youpi' ? 'UPI' : 'COD'}
+                        </span>
+                        <span className={`text-[10px] uppercase font-semibold ${
+                          o.payment_status === 'paid' || o.settlement_status === 'reconciled'
+                            ? 'text-emerald-700'
+                            : o.payment_status === 'awaiting_verification' || o.settlement_status === 'observed'
+                            ? 'text-blue-700'
+                            : 'text-neutral-600'
+                        }`}>
+                          {o.settlement_status || o.payment_status}
+                        </span>
+                      </div>
+                      {o.payment_reference && (
+                        <span className="font-mono text-[9px] text-neutral-400 mt-0.5">
+                          UTR: {o.payment_reference}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="py-3 px-4 text-neutral-600">
                     {o.items?.length || 0} items
@@ -322,6 +342,51 @@ export default function AdminOrdersPage() {
                 <span>Total Amount</span>
                 <span>{formatPrice(selectedOrder.total_amount)}</span>
               </div>
+            </div>
+
+            {/* Payment & Gateway Reconciliation Details */}
+            <div className="bg-white border border-[#E5E5E5] p-4 space-y-2 text-xs">
+              <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-semibold block">
+                Payment & Banking Reconciliation
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                <div>
+                  <span className="text-[10px] text-neutral-500 uppercase block">Gateway</span>
+                  <span className="font-semibold text-black uppercase">
+                    {selectedOrder.payment_gateway === 'youpi' ? 'YouPI (UPI)' : 'COD'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-neutral-500 uppercase block">Payment Status</span>
+                  <span className={`font-semibold uppercase text-[11px] ${
+                    selectedOrder.payment_status === 'paid' ? 'text-emerald-700' : 'text-neutral-700'
+                  }`}>
+                    {selectedOrder.payment_status}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-neutral-500 uppercase block">Settlement Status</span>
+                  <span className="font-semibold uppercase text-[11px] text-neutral-700">
+                    {selectedOrder.settlement_status || 'Pending'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-neutral-500 uppercase block">Bank UTR / Ref</span>
+                  <span className="font-mono text-[11px] text-black">
+                    {selectedOrder.payment_reference || 'N/A'}
+                  </span>
+                </div>
+              </div>
+              {selectedOrder.gateway_payment_id && (
+                <div className="pt-1 text-[11px] text-neutral-500 font-mono">
+                  Gateway Payment ID: {selectedOrder.gateway_payment_id}
+                </div>
+              )}
+              {selectedOrder.payment_verified_at && (
+                <div className="text-[11px] text-emerald-700">
+                  Reconciled on: {new Date(selectedOrder.payment_verified_at).toLocaleString('en-IN')}
+                </div>
+              )}
             </div>
 
             {/* Fulfillment Status Controls */}
