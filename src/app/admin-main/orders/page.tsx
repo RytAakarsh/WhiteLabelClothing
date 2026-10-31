@@ -302,6 +302,28 @@ export default function AdminOrdersPage() {
               </div>
             </div>
 
+            {/* Financial Summary */}
+            <div className="bg-[#F7F7F7] p-4 border border-[#E5E5E5] space-y-1.5 text-xs">
+              <div className="flex justify-between text-neutral-600">
+                <span>Subtotal</span>
+                <span className="font-semibold text-black">{formatPrice(selectedOrder.subtotal)}</span>
+              </div>
+              <div className="flex justify-between text-neutral-600">
+                <span>Delivery Charges</span>
+                <span className="font-semibold text-black">{formatPrice(selectedOrder.delivery_charge || 0)}</span>
+              </div>
+              {selectedOrder.discount_total > 0 && (
+                <div className="flex justify-between text-neutral-600">
+                  <span>Discount</span>
+                  <span className="font-semibold text-emerald-600">-{formatPrice(selectedOrder.discount_total)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm font-bold text-black pt-2 border-t border-[#E5E5E5]">
+                <span>Total Amount</span>
+                <span>{formatPrice(selectedOrder.total_amount)}</span>
+              </div>
+            </div>
+
             {/* Fulfillment Status Controls */}
             <div className="space-y-4 pt-2 border-t border-[#E5E5E5]">
               <h3 className="text-xs font-semibold uppercase tracking-widest text-black">

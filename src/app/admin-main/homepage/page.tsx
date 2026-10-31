@@ -12,7 +12,7 @@ export default function AdminHomepagePage() {
 
   // Announcement Bar
   const [announcementEnabled, setAnnouncementEnabled] = useState(true);
-  const [announcementText, setAnnouncementText] = useState('COMPLIMENTARY EXPRESS SHIPPING ON ALL ORDERS OVER ₹2,999');
+  const [announcementText, setAnnouncementText] = useState('NEW ARRIVALS: MONOCHROME ESSENTIALS & WINTER OUTERWEAR');
 
   // Brand Statement
   const [tagline, setTagline] = useState('More than just a label. Made to be remembered.');

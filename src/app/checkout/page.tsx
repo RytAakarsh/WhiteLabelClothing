@@ -43,9 +43,10 @@ export default function CheckoutPage() {
     }
   }, [user]);
 
-  const freeShippingThreshold = 299900;
-  const shippingCharge = subtotal >= freeShippingThreshold || subtotal === 0 ? 0 : 15000;
-  const finalTotal = subtotal + shippingCharge;
+  // Delivery Charge = ₹99 × Total Item Quantity (9900 paise per unit)
+  const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+  const deliveryCharge = totalQuantity * 9900;
+  const finalTotal = subtotal + deliveryCharge;
 
   // Handle form submission
   const handleSubmitOrder = async (e: React.FormEvent) => {
@@ -60,12 +61,6 @@ export default function CheckoutPage() {
     // Require authentication as per Section 11 & Section 19
     if (!user) {
       router.push(`/login?redirect=${encodeURIComponent('/checkout')}`);
-      return;
-    }
-
-    const hasDemoItems = items.some((i) => i.is_demo);
-    if (hasDemoItems) {
-      setErrorMsg('Your shopping bag contains demonstration catalog items. Real checkout and payments are disabled until production inventory is released.');
       return;
     }
 
@@ -99,7 +94,7 @@ export default function CheckoutPage() {
             variant_id: i.variant_id,
             quantity: i.quantity,
           })),
-          delivery_charge: shippingCharge,
+          delivery_charge: deliveryCharge,
           notes: instructions.trim(),
           payment_method: paymentMethod,
         }),
@@ -422,34 +417,25 @@ export default function CheckoutPage() {
                   <span className="font-medium text-black">{formatPrice(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-neutral-600">
-                  <span>Express Shipping</span>
-                  <span className="font-medium text-black">
-                    {shippingCharge === 0 ? 'Complimentary' : formatPrice(shippingCharge)}
-                  </span>
+                  <span>Delivery Charges ({totalQuantity} {totalQuantity === 1 ? 'item' : 'items'} × ₹99)</span>
+                  <span className="font-medium text-black">{formatPrice(deliveryCharge)}</span>
                 </div>
                 <div className="flex justify-between text-neutral-600">
                   <span>Applicable GST / Taxes</span>
                   <span className="font-medium text-black">Included</span>
                 </div>
-              </div>
-
-              {items.some((i) => i.is_demo) && (
-                <div className="p-3 bg-neutral-200 border border-neutral-300 text-neutral-800 text-xs">
-                  <span className="font-semibold block uppercase tracking-wider mb-1">Demonstration Items</span>
-                  Your bag contains demonstration garments for seasonal preview. Real ordering will be enabled when production inventory is released.
+                <div className="flex justify-between text-sm font-bold text-black pt-2 border-t border-neutral-300">
+                  <span>Total Due</span>
+                  <span>{formatPrice(finalTotal)}</span>
                 </div>
-              )}
+              </div>
 
               <button
                 type="submit"
-                disabled={submitting || items.some((i) => i.is_demo)}
-                className={`w-full py-4 text-xs font-semibold uppercase tracking-widest flex items-center justify-center gap-2 transition ${
-                  items.some((i) => i.is_demo)
-                    ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed'
-                    : 'bg-black text-white hover:bg-neutral-800'
-                }`}
+                disabled={submitting}
+                className="w-full py-4 text-xs font-semibold uppercase tracking-widest flex items-center justify-center gap-2 transition bg-black text-white hover:bg-neutral-800"
               >
-                <span>{submitting ? 'Placing Order...' : items.some((i) => i.is_demo) ? 'Ordering Disabled for Demo Items' : 'Confirm & Place Order'}</span>
+                <span>{submitting ? 'Placing Order...' : 'Confirm & Place Order'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 

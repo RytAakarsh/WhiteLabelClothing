@@ -1,27 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
-
-async function verifyAdmin() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const adminClient = createAdminClient();
-  const { data: roleData } = await adminClient
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (!roleData || roleData.role !== 'admin') return null;
-  return user;
-}
+import { verifyAdminSession } from '@/lib/auth/admin';
 
 export async function PUT(request: Request) {
   try {
-    const adminUser = await verifyAdmin();
-    if (!adminUser) {
+    const authResult = await verifyAdminSession();
+    if (!authResult) {
       return NextResponse.json({ error: 'Unauthorized: Admin privileges required.' }, { status: 403 });
     }
 
@@ -33,9 +16,9 @@ export async function PUT(request: Request) {
     }
 
     const safeQty = Math.max(0, parseInt(stock_quantity, 10) || 0);
+    const client = authResult.client;
 
-    const adminClient = createAdminClient();
-    const { data: updatedVariant, error } = await adminClient
+    const { data: updatedVariant, error } = await client
       .from('product_variants')
       .update({
         stock_quantity: safeQty,

@@ -21,6 +21,18 @@ function LoginForm() {
 
   const supabase = createClient();
 
+  React.useEffect(() => {
+    const errorParam = searchParams.get('error');
+    const errorDesc = searchParams.get('error_description');
+    if (errorParam || errorDesc) {
+      if (errorDesc?.toLowerCase().includes('not enabled') || errorParam === 'unsupported_provider') {
+        setErrorMsg('Google Sign-In is currently pending provider activation in the Supabase console. Please sign in using your email and password below.');
+      } else {
+        setErrorMsg(errorDesc || errorParam || 'Authentication failed. Please sign in with your email.');
+      }
+    }
+  }, [searchParams]);
+
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -70,11 +82,15 @@ function LoginForm() {
         },
       });
       if (error) {
-        setErrorMsg(error.message);
+        if (error.message?.toLowerCase().includes('not enabled') || error.message?.toLowerCase().includes('provider')) {
+          setErrorMsg('Google Sign-In is pending provider credential activation in the Supabase console. Please use email and password to log in.');
+        } else {
+          setErrorMsg(error.message);
+        }
         setLoading(false);
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Google authentication failed.');
+      setErrorMsg(err.message || 'Google authentication could not be completed. Please use email login.');
       setLoading(false);
     }
   };

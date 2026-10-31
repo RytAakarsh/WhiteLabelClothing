@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAdminSupabaseConfig } from '@/lib/supabase/config';
+import { verifyAdminSession } from '@/lib/auth/admin';
 import { formatPrice } from '@/lib/utils';
 import {
   Shirt,
@@ -29,37 +30,38 @@ export default async function AdminDashboardPage() {
   let isFallbackMode = false;
 
   try {
-    const adminClient = createAdminClient();
+    const authResult = await verifyAdminSession();
     const adminConfig = getAdminSupabaseConfig();
-    isFallbackMode = adminConfig.isFallback;
+    isFallbackMode = adminConfig.isFallback && !authResult?.isServiceRole;
+    const client = authResult?.client || createAdminClient();
 
     // 1. Total products & 2. Total published products
-    const { data: productsData } = await adminClient
+    const { data: productsData } = await client
       .from('products')
       .select('id, status, category_id, base_price, categories(slug)');
     allProducts = productsData || [];
 
     // Variants stock analysis: 12. Low stock & 13. Out of stock
-    const { data: variantsData } = await adminClient
+    const { data: variantsData } = await client
       .from('product_variants')
       .select('id, stock_quantity, size, product_id');
     variants = variantsData || [];
 
     // 14. Active offers
-    const { count: offersCount } = await adminClient
+    const { count: offersCount } = await client
       .from('offers')
       .select('*', { count: 'exact', head: true })
       .eq('is_active', true);
     activeOffersCount = offersCount || 0;
 
     // 11. Total registered customers
-    const { count: customersCount } = await adminClient
+    const { count: customersCount } = await client
       .from('profiles')
       .select('*', { count: 'exact', head: true });
     totalCustomers = customersCount || 0;
 
     // Orders metrics
-    const { data: ordersData } = await adminClient
+    const { data: ordersData } = await client
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false });

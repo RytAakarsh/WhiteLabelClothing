@@ -76,14 +76,18 @@ export default function ProductManagementTable({
         }),
       });
 
-      if (res.ok) {
+      const data = await res.json();
+      if (res.ok && data.success) {
         setProducts((prev) =>
           prev.map((p) => (p.id === product.id ? { ...p, status: newStatus } : p))
         );
         router.refresh();
+      } else {
+        alert(data.error || 'Failed to update status.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Status toggle error:', err);
+      alert(err.message || 'Error occurred while updating status.');
     } finally {
       setActionLoading(null);
     }
@@ -103,12 +107,16 @@ export default function ProductManagementTable({
         method: 'DELETE',
       });
 
-      if (res.ok) {
+      const data = await res.json();
+      if (res.ok && data.success) {
         setProducts((prev) => prev.filter((p) => p.id !== product.id));
         router.refresh();
+      } else {
+        alert(data.error || 'Failed to delete product.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Delete error:', err);
+      alert(err.message || 'Error occurred while deleting product.');
     } finally {
       setActionLoading(null);
     }
@@ -195,8 +203,28 @@ export default function ProductManagementTable({
           <tbody className="divide-y divide-[#E5E5E5]">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-12 text-center text-neutral-400 uppercase tracking-widest text-xs">
-                  No products found matching criteria.
+                <td colSpan={7} className="py-16 text-center">
+                  {products.length === 0 ? (
+                    <div className="space-y-4 max-w-sm mx-auto">
+                      <p className="text-sm font-serif uppercase tracking-wider text-black">
+                        No products yet. Start building your collection.
+                      </p>
+                      <p className="text-xs text-neutral-400">
+                        Your store catalog is currently empty. Create your first clothing item to publish it to the storefront.
+                      </p>
+                      <Link
+                        href="/admin-main/products/new"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white text-xs uppercase tracking-widest font-semibold hover:bg-neutral-800 transition"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Add Your First Product</span>
+                      </Link>
+                    </div>
+                  ) : (
+                    <p className="text-xs uppercase tracking-widest text-neutral-400">
+                      No products found matching current filter or search criteria.
+                    </p>
+                  )}
                 </td>
               </tr>
             ) : (

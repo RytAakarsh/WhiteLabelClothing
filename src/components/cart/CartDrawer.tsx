@@ -144,7 +144,7 @@ export default function CartDrawer() {
                 <span className="text-base font-semibold">{formatPrice(subtotal)}</span>
               </div>
               <p className="text-[11px] text-neutral-500 text-center">
-                Taxes and complimentary shipping calculated at checkout
+                Taxes included. Delivery calculated at checkout.
               </p>
 
               <div className="space-y-2">

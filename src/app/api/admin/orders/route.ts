@@ -1,27 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
-
-async function verifyAdmin() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const adminClient = createAdminClient();
-  const { data: roleData } = await adminClient
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (!roleData || roleData.role !== 'admin') return null;
-  return user;
-}
+import { verifyAdminSession } from '@/lib/auth/admin';
 
 export async function PUT(request: Request) {
   try {
-    const adminUser = await verifyAdmin();
-    if (!adminUser) {
+    const authResult = await verifyAdminSession();
+    if (!authResult) {
       return NextResponse.json({ error: 'Unauthorized: Admin privileges required.' }, { status: 403 });
     }
 
@@ -38,10 +21,10 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Order ID is required.' }, { status: 400 });
     }
 
-    const adminClient = createAdminClient();
+    const client = authResult.client;
 
     // Fetch existing order
-    const { data: currentOrder, error: fetchErr } = await adminClient
+    const { data: currentOrder, error: fetchErr } = await client
       .from('orders')
       .select('*')
       .eq('id', order_id)
@@ -73,7 +56,7 @@ export async function PUT(request: Request) {
     }
 
     // Update order
-    const { data: updatedOrder, error: updateErr } = await adminClient
+    const { data: updatedOrder, error: updateErr } = await client
       .from('orders')
       .update(updatePayload)
       .eq('id', order_id)
@@ -86,11 +69,11 @@ export async function PUT(request: Request) {
 
     // Record status history audit
     if (status && status !== currentOrder.status) {
-      await adminClient.from('order_status_history').insert({
+      await client.from('order_status_history').insert({
         order_id,
         previous_status: currentOrder.status,
         new_status: status,
-        changed_by: adminUser.email || 'Admin',
+        changed_by: authResult.user.email || 'Admin',
         note: notes || `Fulfillment status changed to ${status}`,
       });
     }

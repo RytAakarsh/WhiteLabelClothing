@@ -23,6 +23,18 @@ function SignupForm() {
 
   const supabase = createClient();
 
+  React.useEffect(() => {
+    const errorParam = searchParams.get('error');
+    const errorDesc = searchParams.get('error_description');
+    if (errorParam || errorDesc) {
+      if (errorDesc?.toLowerCase().includes('not enabled') || errorParam === 'unsupported_provider') {
+        setErrorMsg('Google Registration is currently pending provider activation in the Supabase console. Please register using your details below.');
+      } else {
+        setErrorMsg(errorDesc || errorParam || 'Registration failed. Please register with email.');
+      }
+    }
+  }, [searchParams]);
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -71,11 +83,15 @@ function SignupForm() {
         },
       });
       if (error) {
-        setErrorMsg(error.message);
+        if (error.message?.toLowerCase().includes('not enabled') || error.message?.toLowerCase().includes('provider')) {
+          setErrorMsg('Google Sign-In is pending provider credential activation in the Supabase console. Please create your account with email.');
+        } else {
+          setErrorMsg(error.message);
+        }
         setLoading(false);
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Google registration failed.');
+      setErrorMsg(err.message || 'Google registration could not be completed. Please create an account with email.');
       setLoading(false);
     }
   };

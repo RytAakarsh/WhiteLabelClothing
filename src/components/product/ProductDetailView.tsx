@@ -35,7 +35,6 @@ export default function ProductDetailView({ product, relatedProducts }: ProductD
   const [quantity, setQuantity] = useState(1);
   const [addedMessage, setAddedMessage] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [showDemoModal, setShowDemoModal] = useState(false);
 
   const activeImage = images[activeImageIndex]?.storage_path || '/images/brand-logo.png';
   const currentPrice = (product.base_price || 0) + (selectedVariant?.price_adjustment || 0);
@@ -45,11 +44,6 @@ export default function ProductDetailView({ product, relatedProducts }: ProductD
   const maxAvailable = selectedVariant?.stock_quantity ?? 0;
 
   const handleAddToCart = () => {
-    if (product.is_demo) {
-      setShowDemoModal(true);
-      return;
-    }
-
     if (!selectedVariant) {
       setErrorMsg('Please select a size to continue.');
       return;
@@ -78,11 +72,6 @@ export default function ProductDetailView({ product, relatedProducts }: ProductD
   };
 
   const handleBuyNow = () => {
-    if (product.is_demo) {
-      setShowDemoModal(true);
-      return;
-    }
-
     if (!selectedVariant) {
       setErrorMsg('Please select a size to proceed to checkout.');
       return;
@@ -189,11 +178,6 @@ export default function ProductDetailView({ product, relatedProducts }: ProductD
         {/* Right Column: Information & Actions */}
         <div className="lg:col-span-5 flex flex-col justify-start space-y-6">
           <div>
-            {product.is_demo && (
-              <div className="inline-flex items-center gap-2 px-2.5 py-1 bg-black text-white text-[10px] uppercase tracking-widest font-semibold mb-3">
-                <span>Demonstration Catalog Model</span>
-              </div>
-            )}
             {product.category && (
               <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-semibold block mb-2">
                 {product.category.name}
@@ -374,18 +358,14 @@ export default function ProductDetailView({ product, relatedProducts }: ProductD
           )}
 
           {/* Brand Assurances */}
-          <div className="pt-6 border-t border-[#E5E5E5] space-y-3 text-xs text-neutral-500">
+          <div className="pt-6 border-t border-[#E5E5E5] space-y-3 text-xs text-neutral-600">
             <div className="flex items-center gap-3">
-              <Truck className="w-4 h-4 text-black flex-shrink-0" />
-              <span>Complimentary shipping on orders above ₹2,999 across India</span>
+              <ShieldCheck className="w-4 h-4 text-black shrink-0" />
+              <span>Authentic White Label craftsmanship with structured silhouette</span>
             </div>
             <div className="flex items-center gap-3">
-              <RefreshCw className="w-4 h-4 text-black flex-shrink-0" />
-              <span>Complimentary 7-day hassle-free exchange & returns</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <ShieldCheck className="w-4 h-4 text-black flex-shrink-0" />
-              <span>100% Genuine White Label authentic garment with warranty</span>
+              <Check className="w-4 h-4 text-black shrink-0" />
+              <span>Engineered heavyweight textiles tailored for enduring form</span>
             </div>
           </div>
         </div>
@@ -404,38 +384,6 @@ export default function ProductDetailView({ product, relatedProducts }: ProductD
           </div>
           <ProductGrid products={relatedProducts} />
         </section>
-      )}
-      {/* Demo Item Notice Modal */}
-      {showDemoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white max-w-md w-full p-6 sm:p-8 border border-neutral-300 shadow-2xl space-y-4">
-            <span className="text-[10px] uppercase font-semibold tracking-widest text-neutral-400 block">
-              White Label Clothing Notice
-            </span>
-            <h3 className="text-xl font-serif uppercase tracking-wider text-black">
-              Demonstration Catalog Item
-            </h3>
-            <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
-              This garment is a demonstration model showcased for catalog preview purposes. Real checkout and online payment processing will be unlocked upon the formal release of production inventory.
-            </p>
-            <div className="pt-2 flex flex-col sm:flex-row gap-2">
-              <button
-                type="button"
-                onClick={() => setShowDemoModal(false)}
-                className="w-full py-3 bg-black text-white text-xs uppercase tracking-widest font-semibold hover:bg-neutral-800 transition"
-              >
-                Understood
-              </button>
-              <Link
-                href="/collections"
-                onClick={() => setShowDemoModal(false)}
-                className="w-full py-3 border border-black text-black text-xs uppercase tracking-widest font-semibold text-center hover:bg-neutral-100 transition"
-              >
-                Browse Collections
-              </Link>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

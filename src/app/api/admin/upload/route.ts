@@ -1,25 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { verifyAdminSession } from '@/lib/auth/admin';
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Verify admin role
-    const adminClient = createAdminClient();
-    const { data: roleData } = await adminClient
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (!roleData || roleData.role !== 'admin') {
+    const authResult = await verifyAdminSession();
+    if (!authResult) {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
@@ -47,7 +32,9 @@ export async function POST(request: Request) {
     const ext = file.name.split('.').pop() || 'png';
     const filename = `products/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${ext}`;
 
-    const { data: uploadData, error: uploadError } = await adminClient.storage
+    const client = authResult.client;
+
+    const { data: uploadData, error: uploadError } = await client.storage
       .from('product-images')
       .upload(filename, buffer, {
         contentType: file.type,
@@ -60,7 +47,7 @@ export async function POST(request: Request) {
     }
 
     // Get public URL
-    const { data: { publicUrl } } = adminClient.storage
+    const { data: { publicUrl } } = client.storage
       .from('product-images')
       .getPublicUrl(uploadData.path);
 

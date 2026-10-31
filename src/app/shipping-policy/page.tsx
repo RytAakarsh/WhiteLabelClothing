@@ -42,10 +42,10 @@ export default function ShippingPolicyPage() {
 
           <section>
             <h2 className="text-sm sm:text-base font-semibold uppercase tracking-wider text-black mb-2">
-              3. Complimentary Shipping Threshold
+              3. Delivery Charges
             </h2>
             <p>
-              We provide complimentary express shipping on all domestic orders of ₹2,999 and above. For orders below ₹2,999, a flat express shipping fee of ₹150 is applied at checkout.
+              Orders are dispatched with express courier delivery calculated transparently at ₹99 per item at the checkout and payment stage. This ensures dedicated protective packaging, individual garment inspection, and fully insured door-to-door transit.
             </p>
           </section>
 

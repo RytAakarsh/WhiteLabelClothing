@@ -115,12 +115,12 @@ export default async function OrderConfirmationPage({ params }: ConfirmationPage
               <span>Subtotal</span>
               <span className="font-medium text-black">{formatPrice(order.subtotal)}</span>
             </div>
-            {order.delivery_charge > 0 && (
-              <div className="flex justify-between text-neutral-600">
-                <span>Shipping</span>
-                <span className="font-medium text-black">{formatPrice(order.delivery_charge)}</span>
-              </div>
-            )}
+            <div className="flex justify-between text-neutral-600">
+              <span>Delivery Charges</span>
+              <span className="font-medium text-black">
+                {order.delivery_charge > 0 ? formatPrice(order.delivery_charge) : '₹0'}
+              </span>
+            </div>
             <div className="flex justify-between text-sm font-bold text-black pt-2 border-t border-neutral-300">
               <span>Total Amount</span>
               <span>{formatPrice(order.total_amount)}</span>

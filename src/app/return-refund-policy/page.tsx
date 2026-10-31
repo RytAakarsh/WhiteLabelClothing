@@ -19,7 +19,7 @@ export default function ReturnRefundPolicyPage() {
         <div className="space-y-6 text-xs sm:text-sm text-neutral-700 leading-relaxed">
           <section>
             <h2 className="text-sm sm:text-base font-semibold uppercase tracking-wider text-black mb-2">
-              1. 7-Day Hassle-Free Returns & Size Exchanges
+              1. Dedicated Size Exchanges & Returns
             </h2>
             <p>
               We want you to be completely satisfied with the drape, silhouette, and fit of your garment. You may request a size exchange or return within 7 calendar days from the date of confirmed delivery.

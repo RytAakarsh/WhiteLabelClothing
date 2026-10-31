@@ -38,20 +38,12 @@ export async function POST(request: Request) {
     const orderNumber = `WLC-${dateStr}-${randSuffix}`;
     const adminClient = createAdminClient();
 
-    // Demo Safeguard: Check if any item belongs to a demonstration product
-    const variantIds = items.map((i: any) => i.variant_id);
-    const { data: variantsWithProducts } = await adminClient
-      .from('product_variants')
-      .select('id, products(name, is_demo)')
-      .in('id', variantIds);
-
-    const hasDemoItem = variantsWithProducts?.some((v: any) => v.products?.is_demo === true);
-    if (hasDemoItem) {
-      return NextResponse.json(
-        { error: 'Demonstration catalog items cannot be purchased. Live checkout will be enabled when physical production inventory is formally released.' },
-        { status: 400 }
-      );
-    }
+    // Calculate server-side delivery charge: strictly ₹99 (9900 paise) per item unit
+    const serverTotalUnits = items.reduce(
+      (sum: number, i: any) => sum + (parseInt(i.quantity, 10) || 1),
+      0
+    );
+    const serverDeliveryCharge = serverTotalUnits * 9900;
 
     // Call atomic PostgreSQL function create_order_with_inventory
     const { data: orderId, error: rpcError } = await adminClient.rpc('create_order_with_inventory', {
@@ -64,7 +56,7 @@ export async function POST(request: Request) {
         variant_id: i.variant_id,
         quantity: parseInt(i.quantity, 10),
       })),
-      p_delivery_charge: delivery_charge,
+      p_delivery_charge: serverDeliveryCharge,
       p_notes: notes.trim(),
       p_order_number: orderNumber,
     });

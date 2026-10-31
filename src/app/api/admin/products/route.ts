@@ -1,28 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
-
-// Check admin helper
-async function verifyAdmin() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const adminClient = createAdminClient();
-  const { data: roleData } = await adminClient
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (!roleData || roleData.role !== 'admin') return null;
-  return user;
-}
+import { verifyAdminSession } from '@/lib/auth/admin';
 
 export async function POST(request: Request) {
   try {
-    const adminUser = await verifyAdmin();
-    if (!adminUser) {
+    const authResult = await verifyAdminSession();
+    if (!authResult) {
       return NextResponse.json({ error: 'Unauthorized: Admin privileges required.' }, { status: 403 });
     }
 
@@ -54,10 +36,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'A maximum of 5 images per product is permitted.' }, { status: 400 });
     }
 
-    const adminClient = createAdminClient();
+    const client = authResult.client;
 
     // 1. Insert product
-    const { data: product, error: prodError } = await adminClient
+    const { data: product, error: prodError } = await client
       .from('products')
       .insert({
         name: name.trim(),
@@ -94,7 +76,7 @@ export async function POST(request: Request) {
         is_active: v.is_active !== undefined ? v.is_active : true,
       }));
 
-      const { error: variantError } = await adminClient
+      const { error: variantError } = await client
         .from('product_variants')
         .insert(variantInserts);
 
@@ -113,7 +95,7 @@ export async function POST(request: Request) {
         sort_order: idx,
       }));
 
-      const { error: imgError } = await adminClient
+      const { error: imgError } = await client
         .from('product_images')
         .insert(imageInserts);
 
@@ -131,8 +113,8 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const adminUser = await verifyAdmin();
-    if (!adminUser) {
+    const authResult = await verifyAdminSession();
+    if (!authResult) {
       return NextResponse.json({ error: 'Unauthorized: Admin privileges required.' }, { status: 403 });
     }
 
@@ -165,10 +147,10 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'A maximum of 5 images per product is permitted.' }, { status: 400 });
     }
 
-    const adminClient = createAdminClient();
+    const client = authResult.client;
 
     // 1. Update product base info
-    const { data: updatedProduct, error: updateError } = await adminClient
+    const { data: updatedProduct, error: updateError } = await client
       .from('products')
       .update({
         name: name.trim(),
@@ -198,7 +180,7 @@ export async function PUT(request: Request) {
     // 2. Upsert / update variants
     for (const v of variants) {
       if (v.id) {
-        await adminClient
+        await client
           .from('product_variants')
           .update({
             sku: v.sku?.trim() || null,
@@ -209,7 +191,7 @@ export async function PUT(request: Request) {
           })
           .eq('id', v.id);
       } else {
-        await adminClient
+        await client
           .from('product_variants')
           .insert({
             product_id: id,
@@ -224,7 +206,7 @@ export async function PUT(request: Request) {
 
     // 3. Replace images if provided
     if (images && images.length > 0) {
-      await adminClient.from('product_images').delete().eq('product_id', id);
+      await client.from('product_images').delete().eq('product_id', id);
 
       const imageInserts = images.map((img: any, idx: number) => ({
         product_id: id,
@@ -234,7 +216,7 @@ export async function PUT(request: Request) {
         sort_order: idx,
       }));
 
-      await adminClient.from('product_images').insert(imageInserts);
+      await client.from('product_images').insert(imageInserts);
     }
 
     return NextResponse.json({ success: true, product: updatedProduct });
@@ -246,8 +228,8 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const adminUser = await verifyAdmin();
-    if (!adminUser) {
+    const authResult = await verifyAdminSession();
+    if (!authResult) {
       return NextResponse.json({ error: 'Unauthorized: Admin privileges required.' }, { status: 403 });
     }
 
@@ -258,17 +240,17 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Product ID is required.' }, { status: 400 });
     }
 
-    const adminClient = createAdminClient();
+    const client = authResult.client;
 
-    // Check if product is in any orders
-    const { count } = await adminClient
+    // Check if product is referenced in non-empty historical orders
+    const { count } = await client
       .from('order_items')
       .select('*', { count: 'exact', head: true })
       .eq('product_id', id);
 
     if (count && count > 0) {
       // Safe archival rather than hard delete to preserve historical order references
-      await adminClient
+      await client
         .from('products')
         .update({ status: 'archived', updated_at: new Date().toISOString() })
         .eq('id', id);
@@ -279,8 +261,14 @@ export async function DELETE(request: Request) {
       });
     }
 
-    // If never ordered, safe to delete
-    const { error } = await adminClient.from('products').delete().eq('id', id);
+    // Explicitly delete child relations to ensure clean hard deletion
+    await client.from('product_images').delete().eq('product_id', id);
+    await client.from('product_variants').delete().eq('product_id', id);
+    await client.from('offer_products').delete().eq('product_id', id);
+    await client.from('cart_items').delete().eq('product_id', id);
+
+    // Hard delete product
+    const { error } = await client.from('products').delete().eq('id', id);
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }

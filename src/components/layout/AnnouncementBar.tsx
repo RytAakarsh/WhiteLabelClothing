@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 
 export default function AnnouncementBar() {
   const [enabled, setEnabled] = useState(true);
-  const [text, setText] = useState('COMPLIMENTARY EXPRESS SHIPPING ON ALL ORDERS OVER ₹2,999');
+  const [text, setText] = useState('NEW ARRIVALS: MONOCHROME ESSENTIALS & WINTER OUTERWEAR');
 
   useEffect(() => {
     async function fetchAnnouncement() {

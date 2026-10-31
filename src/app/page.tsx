@@ -45,14 +45,30 @@ export default async function HomePage() {
         {/* 3. Campaign Hero Carousel */}
         <HeroCarousel />
 
-        {/* 4. Shop by Category */}
+        {/* 4. Brand Introduction */}
+        <section className="bg-white py-16 sm:py-24 border-b border-[#E5E5E5]">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
+            <span className="text-[10px] sm:text-xs uppercase tracking-widest text-neutral-400 font-semibold block">
+              Architectural Essentials · Built for Permanence
+            </span>
+            <h2 className="text-2xl sm:text-4xl md:text-5xl font-serif uppercase tracking-wider text-black">
+              More than just a label.<br />Made to be remembered.
+            </h2>
+            <p className="text-xs sm:text-sm text-neutral-500 max-w-2xl mx-auto leading-relaxed pt-2">
+              White Label Clothing is an exploration of form, weight, and timeless permanence. 
+              Crafted from ultra-heavyweight combed fleece and technical fabrics, each garment offers an austere monochromatic silhouette engineered for everyday expression.
+            </p>
+          </div>
+        </section>
+
+        {/* 5. Shop by Collection */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
           <div className="text-center mb-10 sm:mb-14">
             <span className="text-[10px] sm:text-xs uppercase tracking-widest text-neutral-400 font-semibold block mb-2">
               Curated Monoliths
             </span>
             <h2 className="text-2xl sm:text-4xl font-serif uppercase tracking-wider text-black">
-              Shop by Category
+              Shop by Collection
             </h2>
           </div>
 
@@ -112,6 +128,38 @@ export default async function HomePage() {
                 >
                   Explore Jackets <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 6. Editorial Benefits */}
+        <section className="bg-[#F7F7F7] py-14 sm:py-16 border-y border-[#E5E5E5]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+              <div className="space-y-2 border-l-2 border-black pl-4">
+                <span className="text-xs font-mono font-bold text-black uppercase tracking-widest block">
+                  01 — Curated Collections
+                </span>
+                <p className="text-xs text-neutral-600 leading-relaxed">
+                  Thoughtfully selected styles for a distinctive wardrobe. Every garment is cut from structural heavyweight textiles.
+                </p>
+              </div>
+              <div className="space-y-2 border-l-2 border-black pl-4">
+                <span className="text-xs font-mono font-bold text-black uppercase tracking-widest block">
+                  02 — Designed for Everyday Expression
+                </span>
+                <p className="text-xs text-neutral-600 leading-relaxed">
+                  Contemporary essentials with a refined identity. Monochromatic purity built for comfortable, enduring presence.
+                </p>
+              </div>
+              <div className="space-y-2 border-l-2 border-black pl-4">
+                <span className="text-xs font-mono font-bold text-black uppercase tracking-widest block">
+                  03 — A Seamless Shopping Experience
+                </span>
+                <p className="text-xs text-neutral-600 leading-relaxed">
+                  Discover, select and shop your favourite pieces with ease. Real-time sizing, express dispatch, and dedicated support.
+                </p>
               </div>
             </div>
           </div>
@@ -303,11 +351,11 @@ export default async function HomePage() {
               White Label Clothing
             </span>
             <blockquote className="text-2xl sm:text-4xl md:text-5xl font-serif tracking-tight leading-tight italic">
-              “More than just a label. Made to be remembered.”
+              “Style is not about being noticed. It’s about being remembered.”
             </blockquote>
             <p className="text-xs sm:text-sm text-neutral-400 max-w-xl mx-auto leading-relaxed pt-2">
               Designed in relentless pursuit of silhouette, proportion, and texture. 
-              Our outerwear is tailored for the confident aesthetic mind that speaks through absence of color and uncompromising presence.
+              Our garments are tailored for the confident aesthetic mind that speaks through absence of color and uncompromising presence.
             </p>
             <div className="pt-4">
               <Link
@@ -316,6 +364,68 @@ export default async function HomePage() {
               >
                 Read Our Story
               </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* 11. Instagram / Social Section */}
+        <section className="bg-white py-16 sm:py-24 border-t border-[#E5E5E5]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <span className="text-[10px] sm:text-xs uppercase tracking-widest text-neutral-400 font-semibold block mb-2">
+              Visual Archive
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-serif uppercase tracking-wider text-black mb-3">
+              Follow Our Journey
+            </h2>
+            <p className="text-xs text-neutral-500 mb-8">
+              Join our visual community on Instagram{' '}
+              <a
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-black underline hover:opacity-70"
+              >
+                @whitelabelclothing
+              </a>
+            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="group relative aspect-square bg-[#F7F7F7] border border-[#E5E5E5] overflow-hidden">
+                <Image
+                  src="/images/hero-winter-collection.png"
+                  alt="Editorial Archive 01"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              </div>
+              <div className="group relative aspect-square bg-[#F7F7F7] border border-[#E5E5E5] overflow-hidden">
+                <Image
+                  src="/images/hero-jacket-sale.png"
+                  alt="Editorial Archive 02"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              </div>
+              <div className="group relative aspect-square bg-[#F7F7F7] border border-[#E5E5E5] overflow-hidden">
+                <Image
+                  src="/images/hero-sweatshirt-sale.png"
+                  alt="Editorial Archive 03"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              </div>
+              <div className="group relative aspect-square bg-black border border-black flex flex-col items-center justify-center p-6 text-white text-center">
+                <span className="text-[10px] uppercase tracking-widest text-neutral-400 mb-2">Community</span>
+                <p className="text-xs font-serif uppercase tracking-wider mb-4">#WhiteLabelArchive</p>
+                <a
+                  href="https://instagram.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] uppercase tracking-widest font-semibold border-b border-white pb-0.5 hover:text-neutral-300 transition"
+                >
+                  Follow on Instagram →
+                </a>
+              </div>
             </div>
           </div>
         </section>
