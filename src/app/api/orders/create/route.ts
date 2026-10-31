@@ -20,6 +20,7 @@ export async function POST(request: Request) {
       notes = '',
       payment_method = 'cod',
       idempotency_key,
+      coupon_code,
     } = body;
 
     // Basic Validation
@@ -87,6 +88,7 @@ export async function POST(request: Request) {
       p_notes: notes.trim(),
       p_order_number: orderNumber,
       p_idempotency_key: idempotency_key ? idempotency_key.trim() : null,
+      p_coupon_code: coupon_code ? String(coupon_code).trim().toUpperCase() : null,
     });
 
     if (rpcError) {

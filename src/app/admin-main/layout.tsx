@@ -13,6 +13,7 @@ import {
   ShoppingBag,
   Users,
   Tag,
+  Ticket,
   Home,
   Settings,
   ExternalLink,
@@ -63,6 +64,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: 'Orders', href: '/admin-main/orders', icon: ShoppingBag },
     { label: 'Customers', href: '/admin-main/customers', icon: Users },
     { label: 'Offers', href: '/admin-main/offers', icon: Tag },
+    { label: 'Coupons', href: '/admin-main/coupons', icon: Ticket },
     { label: 'Homepage', href: '/admin-main/homepage', icon: Home },
     { label: 'Store Settings', href: '/admin-main/settings', icon: Settings },
   ];

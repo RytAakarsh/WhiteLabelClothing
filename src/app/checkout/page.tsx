@@ -9,7 +9,7 @@ import Footer from '@/components/layout/Footer';
 import { useCart } from '@/lib/context/CartContext';
 import { useAuth } from '@/lib/context/AuthContext';
 import { formatPrice } from '@/lib/utils';
-import { ShieldCheck, Truck, Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { ShieldCheck, Truck, Lock, ArrowRight, AlertCircle, Tag, Check, X, Loader2 } from 'lucide-react';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -36,6 +36,13 @@ export default function CheckoutPage() {
     return `wlc_checkout_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   });
 
+  // Coupon management state
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<any | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
+
   // Autofill user details if signed in
   useEffect(() => {
     if (user) {
@@ -51,8 +58,54 @@ export default function CheckoutPage() {
 
   // Delivery Charge = ₹99 × Total Item Quantity (9900 paise per unit)
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
-  const deliveryCharge = totalQuantity * 9900;
-  const finalTotal = subtotal + deliveryCharge;
+  const deliveryCharge = appliedCoupon?.free_shipping ? 0 : totalQuantity * 9900;
+  const couponDiscount = appliedCoupon ? appliedCoupon.discount_paise : 0;
+  const finalTotal = Math.max(0, subtotal - couponDiscount) + deliveryCharge;
+
+  // Handle Apply Coupon
+  const handleApplyCoupon = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!couponInput.trim()) return;
+    setCouponLoading(true);
+    setCouponError(null);
+    setCouponSuccess(null);
+
+    try {
+      const res = await fetch('/api/checkout/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: couponInput.trim().toUpperCase(),
+          subtotal,
+          items: items.map((i) => ({
+            variant_id: i.variant_id,
+            quantity: i.quantity,
+          })),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Invalid or inapplicable coupon code.');
+      }
+
+      setAppliedCoupon(data.coupon);
+      setCouponSuccess(data.message || `Coupon ${data.coupon.code} applied!`);
+    } catch (err: any) {
+      setAppliedCoupon(null);
+      setCouponError(err.message || 'Failed to apply coupon.');
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  // Handle Remove Coupon
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput('');
+    setCouponSuccess(null);
+    setCouponError(null);
+  };
 
   // Handle form submission
   const handleSubmitOrder = async (e: React.FormEvent) => {
@@ -104,6 +157,7 @@ export default function CheckoutPage() {
             })),
             notes: instructions.trim(),
             idempotency_key: idempotencyKey,
+            coupon_code: appliedCoupon ? appliedCoupon.code : undefined,
           }),
         });
 
@@ -145,6 +199,7 @@ export default function CheckoutPage() {
           notes: instructions.trim(),
           payment_method: paymentMethod,
           idempotency_key: idempotencyKey,
+          coupon_code: appliedCoupon ? appliedCoupon.code : undefined,
         }),
       });
 
@@ -494,15 +549,93 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
+              {/* Coupon Code Section */}
+              <div className="pt-3 pb-3 border-t border-b border-[#E5E5E5] space-y-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-black">
+                  <Tag className="w-3.5 h-3.5" />
+                  <span>Have a coupon code?</span>
+                </div>
+
+                {!appliedCoupon ? (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={couponInput}
+                        onChange={(e) => {
+                          setCouponInput(e.target.value.toUpperCase());
+                          if (couponError) setCouponError(null);
+                        }}
+                        placeholder="ENTER COUPON CODE"
+                        className="flex-1 px-3 py-2 bg-white border border-[#E5E5E5] text-xs uppercase font-mono tracking-wider focus:outline-hidden focus:border-black"
+                      />
+                      <button
+                        type="button"
+                        disabled={couponLoading || !couponInput.trim()}
+                        onClick={handleApplyCoupon}
+                        className="px-4 py-2 bg-black text-white text-[11px] uppercase tracking-wider font-semibold hover:bg-neutral-800 disabled:opacity-40 transition whitespace-nowrap cursor-pointer flex items-center justify-center min-w-[70px]"
+                      >
+                        {couponLoading ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          'Apply'
+                        )}
+                      </button>
+                    </div>
+
+                    {couponError && (
+                      <p className="text-[11px] text-red-600 flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{couponError}</span>
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-1.5 font-bold text-emerald-800 uppercase tracking-wider">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>{appliedCoupon.code} Applied</span>
+                      </div>
+                      <p className="text-[11px] text-emerald-700">
+                        {appliedCoupon.discount_type === 'percentage'
+                          ? `${appliedCoupon.discount_value}% discount (-${formatPrice(couponDiscount)})`
+                          : `-${formatPrice(couponDiscount)} fixed discount`}
+                        {appliedCoupon.free_shipping ? ' · Free Delivery' : ''}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      className="text-[11px] text-neutral-500 hover:text-black uppercase tracking-wider font-semibold underline p-1 cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {/* Totals Breakdown */}
               <div className="space-y-2.5 text-xs">
                 <div className="flex justify-between text-neutral-600">
                   <span>Bag Subtotal</span>
                   <span className="font-medium text-black">{formatPrice(subtotal)}</span>
                 </div>
+                {appliedCoupon && couponDiscount > 0 && (
+                  <div className="flex justify-between text-emerald-700 font-semibold">
+                    <span>Coupon Discount ({appliedCoupon.code})</span>
+                    <span>-{formatPrice(couponDiscount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-neutral-600">
                   <span>Delivery Charges ({totalQuantity} {totalQuantity === 1 ? 'item' : 'items'} × ₹99)</span>
-                  <span className="font-medium text-black">{formatPrice(deliveryCharge)}</span>
+                  <span className="font-medium text-black">
+                    {appliedCoupon?.free_shipping ? (
+                      <span className="text-emerald-700 font-bold uppercase text-[11px]">Free</span>
+                    ) : (
+                      formatPrice(deliveryCharge)
+                    )}
+                  </span>
                 </div>
                 <div className="flex justify-between text-neutral-600">
                   <span>Applicable GST / Taxes</span>

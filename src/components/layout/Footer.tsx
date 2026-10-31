@@ -117,11 +117,7 @@ export default function Footer() {
                   Shipping & Delivery
                 </Link>
               </li>
-              <li>
-                <Link href="/return-refund-policy" className="hover:text-black transition">
-                  Returns & Refunds
-                </Link>
-              </li>
+
               <li>
                 <Link href="/privacy-policy" className="hover:text-black transition">
                   Privacy Policy

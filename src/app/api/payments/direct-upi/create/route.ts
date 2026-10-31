@@ -45,6 +45,7 @@ export async function POST(request: Request) {
       items,
       notes = '',
       idempotency_key,
+      coupon_code,
     } = body;
 
     // 2. Validate Contact Details
@@ -152,15 +153,17 @@ export async function POST(request: Request) {
       p_notes: typeof notes === 'string' ? notes.trim() : '',
       p_order_number: orderNumber,
       p_idempotency_key: idempotency_key ? String(idempotency_key).trim() : null,
+      p_coupon_code: coupon_code ? String(coupon_code).trim().toUpperCase() : null,
     });
 
     if (rpcError) {
       console.error(`[${requestId}] Direct UPI create_direct_upi_order RPC error:`, rpcError);
       const isStockIssue = rpcError.message?.toLowerCase().includes('stock') || rpcError.message?.toLowerCase().includes('insufficient');
+      const isCouponIssue = rpcError.message?.toLowerCase().includes('coupon');
       return NextResponse.json(
         {
           success: false,
-          code: isStockIssue ? 'INSUFFICIENT_STOCK' : 'ORDER_CREATION_FAILED',
+          code: isStockIssue ? 'INSUFFICIENT_STOCK' : isCouponIssue ? 'INVALID_COUPON' : 'ORDER_CREATION_FAILED',
           message: rpcError.message || 'Could not place order due to inventory lock. Please check garment availability.',
         },
         { status: 400 }
@@ -197,6 +200,8 @@ export async function POST(request: Request) {
       subtotal: Number(rpcResult.subtotal),
       delivery_charge: Number(rpcResult.delivery_charge),
       discount_total: Number(rpcResult.discount_total || 0),
+      coupon_discount: Number(rpcResult.coupon_discount || 0),
+      coupon_code: rpcResult.coupon_code || null,
       upi_uri: upiUri,
       qr_data_url: qrDataUrl,
       upi_id: upiConfig.receiving_upi_id,

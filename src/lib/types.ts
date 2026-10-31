@@ -80,6 +80,40 @@ export interface Offer {
   updated_at: string;
 }
 
+export interface Coupon {
+  id: string;
+  code: string;
+  description: string | null;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  max_discount_paise: number | null;
+  minimum_order_paise: number;
+  usage_limit: number | null;
+  usage_count: number;
+  per_customer_limit: number | null;
+  starts_at: string;
+  expires_at: string | null;
+  applicable_products: string[];
+  applicable_categories: string[];
+  first_order_only: boolean;
+  free_shipping: boolean;
+  is_active: boolean;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+}
+
+export interface CouponRedemption {
+  id: string;
+  coupon_id: string;
+  order_id: string;
+  customer_id: string | null;
+  discount_paise: number;
+  status: 'reserved' | 'redeemed' | 'cancelled';
+  redeemed_at: string;
+}
+
 export interface OrderItem {
   id: string;
   order_id: string;
