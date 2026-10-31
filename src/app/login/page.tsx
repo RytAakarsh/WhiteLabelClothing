@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { createClient } from '@/lib/supabase/client';
+import { getAppUrl } from '@/lib/utils';
 import { ArrowRight } from 'lucide-react';
 
 function LoginForm() {
@@ -74,7 +75,8 @@ function LoginForm() {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectPath)}`;
+      const baseUrl = getAppUrl();
+      const redirectTo = `${baseUrl}/auth/callback?next=${encodeURIComponent(redirectPath)}`;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {

@@ -26,3 +26,34 @@ export function calculateDiscountPercentage(basePrice: number, compareAtPrice: n
   if (!compareAtPrice || compareAtPrice <= basePrice) return 0;
   return Math.round(((compareAtPrice - basePrice) / compareAtPrice) * 100);
 }
+
+/**
+ * Canonical Application URL Resolver
+ * Resolves the absolute base URL based on runtime environment:
+ * - Production: https://www.whitelabelclothing.in
+ * - Development: http://localhost:3000 (strictly when running on localhost)
+ */
+export function getAppUrl(): string {
+  // 1. In browser environment:
+  if (typeof window !== 'undefined') {
+    const origin = window.location.origin;
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return origin;
+    }
+    if (origin.includes('whitelabelclothing.in')) {
+      return 'https://www.whitelabelclothing.in';
+    }
+    return origin;
+  }
+
+  // 2. In server / edge environment:
+  if (process.env.NEXT_PUBLIC_SITE_URL && !process.env.NEXT_PUBLIC_SITE_URL.includes('localhost')) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '');
+  }
+
+  if (process.env.NODE_ENV === 'development') {
+    return 'http://localhost:3000';
+  }
+
+  return 'https://www.whitelabelclothing.in';
+}

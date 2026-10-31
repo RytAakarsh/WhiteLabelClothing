@@ -7,7 +7,7 @@ import Footer from '@/components/layout/Footer';
 import HeroCarousel from '@/components/home/HeroCarousel';
 import ProductGrid from '@/components/product/ProductGrid';
 import { createClient } from '@/lib/supabase/server';
-import { Product } from '@/lib/types';
+import { Product, Category } from '@/lib/types';
 
 export const revalidate = 60; // Revalidate every 60 seconds
 
@@ -26,7 +26,15 @@ export default async function HomePage() {
     .eq('status', 'published')
     .order('sort_order', { ascending: true });
 
+  // Fetch active categories with cover images
+  const { data: rawCategories } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
+
   const products: Product[] = (rawProducts as any[]) || [];
+  const categories: Category[] = (rawCategories as any[]) || [];
 
   // Categorize or filter products
   const featuredProducts = products.filter((p) => p.is_featured);
@@ -45,93 +53,64 @@ export default async function HomePage() {
         {/* 3. Campaign Hero Carousel */}
         <HeroCarousel />
 
-        {/* 4. Brand Introduction */}
-        <section className="bg-white py-16 sm:py-24 border-b border-[#E5E5E5]">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
-            <span className="text-[10px] sm:text-xs uppercase tracking-widest text-neutral-400 font-semibold block">
-              Architectural Essentials · Built for Permanence
-            </span>
-            <h2 className="text-2xl sm:text-4xl md:text-5xl font-serif uppercase tracking-wider text-black">
-              More than just a label.<br />Made to be remembered.
-            </h2>
-            <p className="text-xs sm:text-sm text-neutral-500 max-w-2xl mx-auto leading-relaxed pt-2">
-              White Label Clothing is an exploration of form, weight, and timeless permanence. 
-              Crafted from ultra-heavyweight combed fleece and technical fabrics, each garment offers an austere monochromatic silhouette engineered for everyday expression.
-            </p>
-          </div>
-        </section>
-
-        {/* 5. Shop by Collection */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-          <div className="text-center mb-10 sm:mb-14">
-            <span className="text-[10px] sm:text-xs uppercase tracking-widest text-neutral-400 font-semibold block mb-2">
-              Curated Monoliths
-            </span>
-            <h2 className="text-2xl sm:text-4xl font-serif uppercase tracking-wider text-black">
-              Shop by Collection
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-10">
-            {/* Category 1: Sweatshirts */}
-            <div className="group relative overflow-hidden bg-[#F7F7F7] border border-[#E5E5E5] aspect-4/3 flex flex-col justify-end p-6 sm:p-10">
-              <div className="absolute inset-0">
-                <Image
-                  src="/images/hero-sweatshirt-sale.png"
-                  alt="Premium Sweatshirts"
-                  fill
-                  className="object-cover object-center group-hover:scale-105 transition-transform duration-700 opacity-90"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-              </div>
-
-              <div className="relative z-10 text-white">
-                <span className="text-[10px] uppercase tracking-widest text-neutral-300">Edition 01</span>
-                <h3 className="text-xl sm:text-3xl font-serif uppercase tracking-wider my-2">
-                  Premium Sweatshirts
-                </h3>
-                <p className="text-xs text-neutral-300 max-w-sm mb-4 line-clamp-2">
-                  Ultra-heavyweight cotton fleece engineered with architectural silhouettes for everyday permanence.
-                </p>
-                <Link
-                  href="/collections/sweatshirts"
-                  className="inline-flex items-center gap-2 text-xs uppercase tracking-widest font-semibold bg-white text-black px-5 py-3 hover:bg-neutral-200 transition"
-                >
-                  Explore Sweatshirts <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
+        {/* 4. Shop by Collection (Dynamic from Categories Database) */}
+        {categories.length > 0 && (
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+            <div className="text-center mb-10 sm:mb-14">
+              <span className="text-[10px] sm:text-xs uppercase tracking-widest text-neutral-400 font-semibold block mb-2">
+                Curated Monoliths
+              </span>
+              <h2 className="text-2xl sm:text-4xl font-serif uppercase tracking-wider text-black">
+                Shop by Collection
+              </h2>
             </div>
 
-            {/* Category 2: Jackets */}
-            <div className="group relative overflow-hidden bg-[#F7F7F7] border border-[#E5E5E5] aspect-4/3 flex flex-col justify-end p-6 sm:p-10">
-              <div className="absolute inset-0">
-                <Image
-                  src="/images/hero-jacket-sale.png"
-                  alt="Premium Jackets"
-                  fill
-                  className="object-cover object-center group-hover:scale-105 transition-transform duration-700 opacity-90"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-              </div>
+            <div className={`grid grid-cols-1 ${categories.length === 1 ? 'max-w-2xl mx-auto' : 'md:grid-cols-2'} gap-6 lg:gap-10`}>
+              {categories.map((cat, idx) => {
+                const coverImage = cat.image_path || (idx % 2 === 0 ? '/images/hero-sweatshirt-sale.png' : '/images/hero-jacket-sale.png');
+                const editionNumber = String(idx + 1).padStart(2, '0');
 
-              <div className="relative z-10 text-white">
-                <span className="text-[10px] uppercase tracking-widest text-neutral-300">Edition 02</span>
-                <h3 className="text-xl sm:text-3xl font-serif uppercase tracking-wider my-2">
-                  Premium Jackets
-                </h3>
-                <p className="text-xs text-neutral-300 max-w-sm mb-4 line-clamp-2">
-                  Tactile outerwear combining thermal insulation with austere editorial tailoring.
-                </p>
-                <Link
-                  href="/collections/jackets"
-                  className="inline-flex items-center gap-2 text-xs uppercase tracking-widest font-semibold bg-white text-black px-5 py-3 hover:bg-neutral-200 transition"
-                >
-                  Explore Jackets <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
+                return (
+                  <div
+                    key={cat.id}
+                    className="group relative overflow-hidden bg-[#F7F7F7] border border-[#E5E5E5] aspect-4/3 flex flex-col justify-end p-6 sm:p-10"
+                  >
+                    <div className="absolute inset-0">
+                      <Image
+                        src={coverImage}
+                        alt={cat.name}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                        className="object-cover object-center group-hover:scale-105 transition-transform duration-700 opacity-90"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
+                    </div>
+
+                    <div className="relative z-10 text-white">
+                      <span className="text-[10px] uppercase tracking-widest text-neutral-300 font-mono">
+                        Edition {editionNumber}
+                      </span>
+                      <h3 className="text-xl sm:text-3xl font-serif uppercase tracking-wider my-2">
+                        {cat.name}
+                      </h3>
+                      {cat.description && (
+                        <p className="text-xs text-neutral-300 max-w-sm mb-4 line-clamp-2 leading-relaxed">
+                          {cat.description}
+                        </p>
+                      )}
+                      <Link
+                        href={`/collections/${cat.slug}`}
+                        className="inline-flex items-center gap-2 text-xs uppercase tracking-widest font-semibold bg-white text-black px-5 py-3 hover:bg-neutral-200 transition"
+                      >
+                        Explore {cat.name} <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* 6. Editorial Benefits */}
         <section className="bg-[#F7F7F7] py-14 sm:py-16 border-y border-[#E5E5E5]">
@@ -367,71 +346,9 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
-
-        {/* 11. Instagram / Social Section */}
-        <section className="bg-white py-16 sm:py-24 border-t border-[#E5E5E5]">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <span className="text-[10px] sm:text-xs uppercase tracking-widest text-neutral-400 font-semibold block mb-2">
-              Visual Archive
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-serif uppercase tracking-wider text-black mb-3">
-              Follow Our Journey
-            </h2>
-            <p className="text-xs text-neutral-500 mb-8">
-              Join our visual community on Instagram{' '}
-              <a
-                href="https://instagram.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-black underline hover:opacity-70"
-              >
-                @whitelabelclothing
-              </a>
-            </p>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="group relative aspect-square bg-[#F7F7F7] border border-[#E5E5E5] overflow-hidden">
-                <Image
-                  src="/images/hero-winter-collection.png"
-                  alt="Editorial Archive 01"
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-              <div className="group relative aspect-square bg-[#F7F7F7] border border-[#E5E5E5] overflow-hidden">
-                <Image
-                  src="/images/hero-jacket-sale.png"
-                  alt="Editorial Archive 02"
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-              <div className="group relative aspect-square bg-[#F7F7F7] border border-[#E5E5E5] overflow-hidden">
-                <Image
-                  src="/images/hero-sweatshirt-sale.png"
-                  alt="Editorial Archive 03"
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-              <div className="group relative aspect-square bg-black border border-black flex flex-col items-center justify-center p-6 text-white text-center">
-                <span className="text-[10px] uppercase tracking-widest text-neutral-400 mb-2">Community</span>
-                <p className="text-xs font-serif uppercase tracking-wider mb-4">#WhiteLabelArchive</p>
-                <a
-                  href="https://instagram.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] uppercase tracking-widest font-semibold border-b border-white pb-0.5 hover:text-neutral-300 transition"
-                >
-                  Follow on Instagram →
-                </a>
-              </div>
-            </div>
-          </div>
-        </section>
       </main>
 
-      {/* 11. Footer */}
+      {/* Footer */}
       <Footer />
     </div>
   );

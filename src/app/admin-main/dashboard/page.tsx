@@ -32,17 +32,19 @@ export default async function AdminDashboardPage() {
   try {
     const authResult = await verifyAdminSession();
     const adminConfig = getAdminSupabaseConfig();
-    isFallbackMode = adminConfig.isFallback && !authResult?.isServiceRole;
     const client = authResult?.client || createAdminClient();
 
+    const hasServiceRoleKey = !adminConfig.isFallback;
+    const hasAdminSession = !!authResult;
+
     // 1. Total products & 2. Total published products
-    const { data: productsData } = await client
+    const { data: productsData, error: productsError } = await client
       .from('products')
       .select('id, status, category_id, base_price, categories(slug)');
     allProducts = productsData || [];
 
     // Variants stock analysis: 12. Low stock & 13. Out of stock
-    const { data: variantsData } = await client
+    const { data: variantsData, error: variantsError } = await client
       .from('product_variants')
       .select('id, stock_quantity, size, product_id');
     variants = variantsData || [];
@@ -61,13 +63,31 @@ export default async function AdminDashboardPage() {
     totalCustomers = customersCount || 0;
 
     // Orders metrics
-    const { data: ordersData } = await client
+    const { data: ordersData, error: ordersError } = await client
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false });
     allOrders = ordersData || [];
+
+    // Check if telemetry is legitimately restricted by RLS
+    const isRlsBlocked =
+      (ordersError && ordersError.code === '42501') ||
+      (productsError && productsError.code === '42501');
+    isFallbackMode = isRlsBlocked || (!hasServiceRoleKey && !hasAdminSession);
+
+    // Safe server-side telemetry diagnostic (never outputs credentials)
+    console.info(
+      `[Dashboard Telemetry Diagnostic] Auth Engine: ${
+        hasServiceRoleKey
+          ? `Privileged Service-Role (${adminConfig.keyName})`
+          : hasAdminSession
+          ? 'Authenticated Administrator (RLS)'
+          : 'Restricted'
+      } | Status: ${isFallbackMode ? 'Restricted' : 'Operational'}`
+    );
   } catch (err) {
     console.error('[AdminDashboardPage] Error fetching dashboard telemetry:', err);
+    isFallbackMode = true;
   }
 
   const totalProducts = allProducts.length;
@@ -105,7 +125,7 @@ export default async function AdminDashboardPage() {
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
             <span>
-              <strong>Deployment Environment Notice:</strong> <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">SUPABASE_SERVICE_ROLE_KEY</code> is not configured in Cloudflare Pages environment variables. Store telemetry is currently restricted by Row Level Security. Add <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">SUPABASE_SERVICE_ROLE_KEY</code> in Cloudflare Pages Settings &gt; Environment variables to unlock privileged metrics.
+              <strong>Deployment Environment Notice:</strong> Store telemetry is currently restricted by Row Level Security. Add <code className="font-mono bg-amber-100 px-1 py-0.5 rounded">SUPABASE_SERVICE_ROLE_KEY</code> in Cloudflare Pages Settings &gt; Environment variables (for Production) and redeploy to unlock privileged metrics.
             </span>
           </div>
         </div>

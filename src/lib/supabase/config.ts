@@ -32,20 +32,40 @@ export function getPublicSupabaseConfig(): { url: string; key: string } {
   return { url, key };
 }
 
-export function getAdminSupabaseConfig(): { url: string; serviceRoleKey: string; isFallback: boolean } {
-  const { url, key } = getPublicSupabaseConfig();
-  const serviceRoleKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_SECRET_KEY;
+export interface ServiceRoleDiagnostic {
+  hasKey: boolean;
+  keyName: string | null;
+  isValid: boolean;
+  mode: 'service_role_privileged' | 'authenticated_admin_rls' | 'restricted';
+  message: string;
+}
 
-  if (!serviceRoleKey) {
-    console.warn(
-      `[Supabase Configuration Warning]: Missing SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_KEY).\n` +
-      `Falling back to public anonymous key for server queries. Some admin metrics may be restricted by RLS.\n` +
-      `To enable full admin bypass, set SUPABASE_SERVICE_ROLE_KEY in Cloudflare Pages dashboard (Settings > Environment variables).`
-    );
-    return { url, serviceRoleKey: key, isFallback: true };
+export function getAdminSupabaseConfig(): { url: string; serviceRoleKey: string; isFallback: boolean; keyName: string | null } {
+  const { url, key } = getPublicSupabaseConfig();
+  
+  // Inspect all standard naming conventions for the service role key
+  const keyMap: Record<string, string | undefined> = {
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY,
+    SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
+    SERVICE_ROLE_KEY: process.env.SERVICE_ROLE_KEY,
+    SUPABASE_SERVICE_ROLE: process.env.SUPABASE_SERVICE_ROLE,
+  };
+
+  let matchedKeyName: string | null = null;
+  let serviceRoleKey: string | undefined = undefined;
+
+  for (const [name, val] of Object.entries(keyMap)) {
+    if (val && val.trim().length > 0) {
+      matchedKeyName = name;
+      serviceRoleKey = val.trim();
+      break;
+    }
   }
 
-  return { url, serviceRoleKey, isFallback: false };
+  if (!serviceRoleKey) {
+    return { url, serviceRoleKey: key, isFallback: true, keyName: null };
+  }
+
+  return { url, serviceRoleKey, isFallback: false, keyName: matchedKeyName };
 }

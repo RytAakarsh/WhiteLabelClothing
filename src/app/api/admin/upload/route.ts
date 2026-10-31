@@ -30,7 +30,11 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(arrayBuffer);
 
     const ext = file.name.split('.').pop() || 'png';
-    const filename = `products/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${ext}`;
+    const folderParam = formData.get('folder');
+    const folder = (typeof folderParam === 'string' && ['products', 'categories'].includes(folderParam))
+      ? folderParam
+      : 'products';
+    const filename = `${folder}/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${ext}`;
 
     const client = authResult.client;
 
