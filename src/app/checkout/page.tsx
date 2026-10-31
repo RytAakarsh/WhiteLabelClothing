@@ -80,7 +80,7 @@ export default function CheckoutPage() {
 
     try {
       if (paymentMethod === 'upi') {
-        const response = await fetch('/api/payments/youpi/create', {
+        const response = await fetch('/api/payments/direct-upi/create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -110,18 +110,12 @@ export default function CheckoutPage() {
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          throw new Error(data.error || 'Failed to initialize UPI payment session.');
+          throw new Error(data.error || 'Failed to initialize direct UPI payment session.');
         }
 
         clearCart();
-
-        if (data.checkout_url) {
-          window.location.href = data.checkout_url;
-          return;
-        } else {
-          router.push(`/checkout/confirmation/${data.order_number}`);
-          return;
-        }
+        router.push(`/checkout/direct-upi/${data.order_number}`);
+        return;
       }
 
       // Default: Cash on Delivery flow

@@ -30,6 +30,12 @@ export default function AdminOrdersPage() {
   const [adminNotes, setAdminNotes] = useState('');
   const [savingStatus, setSavingStatus] = useState(false);
 
+  // Direct UPI Verification state
+  const [adminUtrInput, setAdminUtrInput] = useState('');
+  const [verifyingAction, setVerifyingAction] = useState(false);
+  const [verifyMsg, setVerifyMsg] = useState<string | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+
   const supabase = createClient();
 
   const fetchOrders = async () => {
@@ -63,6 +69,9 @@ export default function AdminOrdersPage() {
     setNewPaymentStatus(order.payment_status);
     setTrackingNumber(order.tracking_number || '');
     setAdminNotes(order.notes || '');
+    setAdminUtrInput(order.payment_reference || '');
+    setVerifyMsg(null);
+    setVerifyError(null);
   };
 
   const handleSaveOrderStatus = async () => {
@@ -92,15 +101,123 @@ export default function AdminOrdersPage() {
     }
   };
 
+  // Direct UPI: Verify payment in SBI account
+  const handleVerifyDirectUpi = async () => {
+    if (!selectedOrder) return;
+    setVerifyError(null);
+    setVerifyMsg(null);
+
+    const cleanUtr = adminUtrInput.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!cleanUtr || cleanUtr.length < 6) {
+      setVerifyError('Please enter the 12-digit Bank UTR confirmed in the SBI account.');
+      return;
+    }
+
+    setVerifyingAction(true);
+    try {
+      const res = await fetch('/api/admin/payments/direct-upi/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_id: selectedOrder.id,
+          verified_utr: cleanUtr,
+        }),
+      });
+
+      const resJson = await res.json();
+      if (!res.ok || !resJson.success) {
+        throw new Error(resJson.error || 'Failed to verify payment.');
+      }
+
+      setVerifyMsg(resJson.message);
+      await fetchOrders();
+    } catch (err: any) {
+      setVerifyError(err.message || 'Error executing verification.');
+    } finally {
+      setVerifyingAction(false);
+    }
+  };
+
+  // Direct UPI: Flag for manual review
+  const handleFlagReviewDirectUpi = async () => {
+    if (!selectedOrder) return;
+    setVerifyError(null);
+    setVerifyMsg(null);
+
+    setVerifyingAction(true);
+    try {
+      const res = await fetch('/api/admin/payments/direct-upi/flag-review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_id: selectedOrder.id,
+          note: adminNotes || 'Flagged for banking audit',
+        }),
+      });
+
+      const resJson = await res.json();
+      if (!res.ok || !resJson.success) {
+        throw new Error(resJson.error || 'Failed to flag order.');
+      }
+
+      setVerifyMsg('Order marked for Manual Review.');
+      await fetchOrders();
+    } catch (err: any) {
+      setVerifyError(err.message || 'Error updating order.');
+    } finally {
+      setVerifyingAction(false);
+    }
+  };
+
+  // Direct UPI: Reject payment & restore stock
+  const handleRejectDirectUpi = async () => {
+    if (!selectedOrder) return;
+    if (!confirm(`Are you sure you want to REJECT this payment and CANCEL order ${selectedOrder.order_number}? This will restore all garment stock.`)) {
+      return;
+    }
+
+    setVerifyError(null);
+    setVerifyMsg(null);
+    setVerifyingAction(true);
+
+    try {
+      const res = await fetch('/api/admin/payments/direct-upi/reject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_id: selectedOrder.id,
+          reason: adminNotes || 'Credit not reflected in SBI account',
+        }),
+      });
+
+      const resJson = await res.json();
+      if (!res.ok || !resJson.success) {
+        throw new Error(resJson.error || 'Failed to reject payment.');
+      }
+
+      setVerifyMsg('Payment rejected. Order cancelled and inventory restored.');
+      await fetchOrders();
+    } catch (err: any) {
+      setVerifyError(err.message || 'Error rejecting payment.');
+    } finally {
+      setVerifyingAction(false);
+    }
+  };
+
   const filtered = orders.filter((o) => {
-    if (statusFilter !== 'all' && o.status !== statusFilter) return false;
+    if (statusFilter === 'awaiting_verification') {
+      if (o.payment_status !== 'awaiting_verification') return false;
+    } else if (statusFilter !== 'all' && o.status !== statusFilter) {
+      return false;
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
-      const numMatch = o.order_number.toLowerCase().includes(q);
-      const nameMatch = o.customer_name.toLowerCase().includes(q);
-      const emailMatch = o.customer_email.toLowerCase().includes(q);
-      const phoneMatch = o.customer_phone.toLowerCase().includes(q);
-      if (!numMatch && !nameMatch && !emailMatch && !phoneMatch) return false;
+      const numMatch = o.order_number?.toLowerCase().includes(q);
+      const nameMatch = o.customer_name?.toLowerCase().includes(q);
+      const emailMatch = o.customer_email?.toLowerCase().includes(q);
+      const phoneMatch = o.customer_phone?.toLowerCase().includes(q);
+      const utrMatch = o.payment_reference?.toLowerCase().includes(q);
+      if (!numMatch && !nameMatch && !emailMatch && !phoneMatch && !utrMatch) return false;
     }
     return true;
   });
@@ -119,7 +236,7 @@ export default function AdminOrdersPage() {
 
         <button
           onClick={fetchOrders}
-          className="px-4 py-2 bg-[#F7F7F7] border border-[#E5E5E5] text-black text-xs uppercase tracking-widest font-semibold hover:bg-neutral-200 transition flex items-center gap-2"
+          className="px-4 py-2 bg-[#F7F7F7] border border-[#E5E5E5] text-black text-xs uppercase tracking-widest font-semibold hover:bg-neutral-200 transition flex items-center gap-2 cursor-pointer"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           <span>Refresh Orders</span>
@@ -132,7 +249,7 @@ export default function AdminOrdersPage() {
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
           <input
             type="text"
-            placeholder="Search by order #, client, email..."
+            placeholder="Search by order #, client, UTR..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-4 py-2 bg-[#F7F7F7] border border-[#E5E5E5] text-xs focus:outline-hidden focus:border-black"
@@ -140,17 +257,19 @@ export default function AdminOrdersPage() {
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-none">
-          {['all', 'pending', 'processing', 'shipped', 'delivered', 'cancelled'].map((st) => (
+          {['all', 'awaiting_verification', 'pending', 'processing', 'shipped', 'delivered', 'cancelled'].map((st) => (
             <button
               key={st}
               onClick={() => setStatusFilter(st)}
-              className={`px-3 py-1.5 text-xs uppercase tracking-wider font-semibold whitespace-nowrap transition ${
+              className={`px-3 py-1.5 text-xs uppercase tracking-wider font-semibold whitespace-nowrap transition cursor-pointer ${
                 statusFilter === st
                   ? 'bg-black text-white'
+                  : st === 'awaiting_verification'
+                  ? 'bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100'
                   : 'bg-[#F7F7F7] text-neutral-600 hover:bg-neutral-200'
               }`}
             >
-              {st}
+              {st === 'awaiting_verification' ? '⚡ UPI Verification' : st}
             </button>
           ))}
         </div>
@@ -216,7 +335,7 @@ export default function AdminOrdersPage() {
                     <div className="flex flex-col">
                       <div className="flex items-center gap-1.5">
                         <span className="text-[9px] uppercase font-bold tracking-wider px-1 bg-neutral-200 text-neutral-800 rounded-xs">
-                          {o.payment_gateway === 'youpi' ? 'UPI' : 'COD'}
+                          {o.payment_gateway === 'direct_upi' ? 'DIRECT UPI' : o.payment_gateway === 'youpi' ? 'YOUPI' : 'COD'}
                         </span>
                         <span className={`text-[10px] uppercase font-semibold ${
                           o.payment_status === 'paid' || o.settlement_status === 'reconciled'
@@ -345,7 +464,7 @@ export default function AdminOrdersPage() {
             </div>
 
             {/* Payment & Gateway Reconciliation Details */}
-            <div className="bg-white border border-[#E5E5E5] p-4 space-y-2 text-xs">
+            <div className="bg-white border border-[#E5E5E5] p-4 space-y-3 text-xs">
               <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-semibold block">
                 Payment & Banking Reconciliation
               </span>
@@ -353,13 +472,13 @@ export default function AdminOrdersPage() {
                 <div>
                   <span className="text-[10px] text-neutral-500 uppercase block">Gateway</span>
                   <span className="font-semibold text-black uppercase">
-                    {selectedOrder.payment_gateway === 'youpi' ? 'YouPI (UPI)' : 'COD'}
+                    {selectedOrder.payment_gateway === 'direct_upi' ? 'Direct UPI' : selectedOrder.payment_gateway === 'youpi' ? 'YouPI (UPI)' : 'COD'}
                   </span>
                 </div>
                 <div>
                   <span className="text-[10px] text-neutral-500 uppercase block">Payment Status</span>
                   <span className={`font-semibold uppercase text-[11px] ${
-                    selectedOrder.payment_status === 'paid' ? 'text-emerald-700' : 'text-neutral-700'
+                    selectedOrder.payment_status === 'paid' ? 'text-emerald-700' : selectedOrder.payment_status === 'awaiting_verification' ? 'text-blue-700' : 'text-neutral-700'
                   }`}>
                     {selectedOrder.payment_status}
                   </span>
@@ -384,10 +503,108 @@ export default function AdminOrdersPage() {
               )}
               {selectedOrder.payment_verified_at && (
                 <div className="text-[11px] text-emerald-700">
-                  Reconciled on: {new Date(selectedOrder.payment_verified_at).toLocaleString('en-IN')}
+                  Reconciled on: {new Date(selectedOrder.payment_verified_at).toLocaleString('en-IN')} {selectedOrder.verified_by ? `by ${selectedOrder.verified_by}` : ''}
                 </div>
               )}
             </div>
+
+            {/* Direct UPI Verification Panel */}
+            {(selectedOrder.payment_gateway === 'direct_upi' || selectedOrder.payment_status === 'awaiting_verification') && (
+              <div className="bg-[#FAF5EF] border border-[#D4A373]/30 p-4 space-y-4 text-xs">
+                <div className="flex items-center justify-between pb-2 border-b border-[#D4A373]/20">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-widest text-[#B5835A] font-bold block">
+                      Direct UPI Manual Bank Verification
+                    </span>
+                    <p className="text-[11px] text-neutral-600 mt-0.5">
+                      Verify incoming credit of <strong className="text-black font-semibold">{formatPrice(selectedOrder.total_amount)}</strong> in SBI Account before approving order.
+                    </p>
+                  </div>
+                  <span className={`px-2 py-0.5 text-[9px] uppercase font-bold tracking-wider ${
+                    selectedOrder.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                  }`}>
+                    {selectedOrder.payment_status === 'paid' ? 'Verified in SBI' : 'Requires Bank Check'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                  <div className="bg-white p-3 border border-[#E5E5E5] space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-neutral-400 block">Bank Account Credentials</span>
+                    <p className="text-neutral-700">Payee: <strong className="text-black">MOHAMMED MOIN</strong></p>
+                    <p className="text-neutral-700">VPA: <strong className="font-mono text-black">moinusman0302@oksbi</strong></p>
+                    <p className="text-neutral-500 text-[10px] font-mono">SBI A/C: 43295257620 · IFSC: SBIN0014244</p>
+                  </div>
+
+                  <div className="bg-white p-3 border border-[#E5E5E5] space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-neutral-400 block">Customer Submitted Details</span>
+                    <p className="text-neutral-700">Submitted UTR: <strong className="font-mono text-black">{selectedOrder.payment_reference || 'None Submitted'}</strong></p>
+                    <p className="text-neutral-700">Amount Due: <strong className="text-black">{formatPrice(selectedOrder.total_amount)}</strong></p>
+                    <p className="text-neutral-500 text-[10px]">Settlement: {selectedOrder.settlement_status || 'unsettled'}</p>
+                  </div>
+                </div>
+
+                {verifyError && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs">
+                    {verifyError}
+                  </div>
+                )}
+                {verifyMsg && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium">
+                    {verifyMsg}
+                  </div>
+                )}
+
+                {selectedOrder.payment_status !== 'paid' ? (
+                  <div className="space-y-3 pt-1">
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wider font-bold text-neutral-700 mb-1">
+                        Confirm 12-Digit Bank UTR (From SBI Statement / SMS):
+                      </label>
+                      <input
+                        type="text"
+                        value={adminUtrInput}
+                        onChange={(e) => setAdminUtrInput(e.target.value)}
+                        placeholder="e.g. 630129485721"
+                        className="w-full px-3 py-2 bg-white border border-[#E5E5E5] text-xs font-mono tracking-wider focus:outline-hidden uppercase"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                      <button
+                        type="button"
+                        disabled={verifyingAction}
+                        onClick={handleVerifyDirectUpi}
+                        className="px-3 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold uppercase tracking-wider transition disabled:opacity-50 text-center"
+                      >
+                        {verifyingAction ? 'Verifying...' : '✓ Approve & Confirm Order'}
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={verifyingAction}
+                        onClick={handleFlagReviewDirectUpi}
+                        className="px-3 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold uppercase tracking-wider transition disabled:opacity-50 text-center"
+                      >
+                        Flag for Review
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={verifyingAction}
+                        onClick={handleRejectDirectUpi}
+                        className="px-3 py-2.5 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold uppercase tracking-wider transition disabled:opacity-50 text-center"
+                      >
+                        ✕ Reject & Restore Stock
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs">
+                    ✓ Payment confirmed and verified against SBI Statement with UTR <span className="font-mono font-bold">{selectedOrder.payment_reference}</span>.
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Fulfillment Status Controls */}
             <div className="space-y-4 pt-2 border-t border-[#E5E5E5]">
