@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 import { getDirectUpiSettings, buildUpiUri, generateQrDataUrl } from '@/lib/payments/direct-upi';
 
 export async function GET(
@@ -8,37 +8,33 @@ export async function GET(
 ) {
   try {
     const { orderNumber } = await params;
-    if (!orderNumber) {
-      return NextResponse.json({ error: 'Order number is required.' }, { status: 400 });
+    if (!orderNumber?.trim()) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'ORDER_REQUIRED',
+          message: 'Order reference number is required.',
+        },
+        { status: 400 }
+      );
     }
 
-    const admin = createAdminClient();
+    const supabase = await createClient();
 
-    // Fetch order details
-    const { data: order, error: orderErr } = await admin
-      .from('orders')
-      .select(`
-        id,
-        order_number,
-        customer_name,
-        customer_email,
-        customer_phone,
-        total_amount,
-        subtotal,
-        delivery_charge,
-        status,
-        payment_status,
-        payment_gateway,
-        payment_reference,
-        settlement_status,
-        payment_verified_at,
-        created_at
-      `)
-      .eq('order_number', orderNumber.trim())
-      .maybeSingle();
+    // Fetch order details using resilient SECURITY DEFINER RPC
+    const { data: order, error: orderErr } = await supabase.rpc('get_direct_upi_order_details', {
+      p_order_ref: orderNumber.trim(),
+    });
 
     if (orderErr || !order) {
-      return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'ORDER_NOT_FOUND',
+          message: 'Order not found or has expired.',
+        },
+        { status: 404 }
+      );
     }
 
     // Fetch active Direct UPI settings
@@ -66,6 +62,13 @@ export async function GET(
     });
   } catch (err: any) {
     console.error('Error in direct UPI details route:', err);
-    return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        code: 'INTERNAL_ERROR',
+        message: 'Could not load order details.',
+      },
+      { status: 500 }
+    );
   }
 }

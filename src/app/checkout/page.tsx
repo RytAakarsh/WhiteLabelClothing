@@ -110,7 +110,7 @@ export default function CheckoutPage() {
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          throw new Error(data.error || 'Failed to initialize direct UPI payment session.');
+          throw new Error(data.message || data.error || 'Failed to initialize direct UPI payment session.');
         }
 
         clearCart();

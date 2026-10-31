@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { getDirectUpiSettings, buildUpiUri, generateQrDataUrl } from '@/lib/payments/direct-upi';
 
 export async function POST(request: Request) {
+  const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
   try {
     const supabase = await createClient();
     const {
@@ -12,10 +13,30 @@ export async function POST(request: Request) {
 
     // 1. Validate Customer Authentication
     if (!user) {
-      return NextResponse.json({ error: 'Please sign in to complete checkout.' }, { status: 401 });
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'AUTH_REQUIRED',
+          message: 'Please sign in to complete checkout.',
+        },
+        { status: 401 }
+      );
     }
 
-    const body = await request.json();
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'INVALID_PAYLOAD',
+          message: 'Malformed request body.',
+        },
+        { status: 400 }
+      );
+    }
+
     const {
       customer_name,
       customer_email,
@@ -26,81 +47,98 @@ export async function POST(request: Request) {
       idempotency_key,
     } = body;
 
-    // 2. Validate Contact and Address
-    if (!customer_name || !customer_email || !customer_phone) {
-      return NextResponse.json({ error: 'Contact details (name, email, phone) are required.' }, { status: 400 });
+    // 2. Validate Contact Details
+    if (!customer_name?.trim() || !customer_email?.trim() || !customer_phone?.trim()) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'CONTACT_REQUIRED',
+          message: 'Contact details (name, email, and 10-digit mobile number) are required.',
+        },
+        { status: 400 }
+      );
     }
 
+    // 3. Validate Delivery Address
     if (
       !shipping_address ||
-      !shipping_address.address_line1 ||
-      !shipping_address.city ||
-      !shipping_address.postal_code
+      !shipping_address.address_line1?.trim() ||
+      !shipping_address.city?.trim() ||
+      !shipping_address.postal_code?.trim()
     ) {
-      return NextResponse.json({ error: 'Complete delivery address is required.' }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'ADDRESS_REQUIRED',
+          message: 'Complete delivery address including street, city, and 6-digit PIN code is required.',
+        },
+        { status: 400 }
+      );
     }
 
+    // 4. Validate Items Array
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: 'Your shopping bag is empty.' }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'EMPTY_CART',
+          message: 'Your shopping bag is empty. Please add garments before checking out.',
+        },
+        { status: 400 }
+      );
     }
 
-    const adminClient = createAdminClient();
+    for (const item of items) {
+      if (!item.variant_id) {
+        return NextResponse.json(
+          {
+            success: false,
+            code: 'INVALID_ITEM',
+            message: 'Each item must specify a valid size variant ID.',
+          },
+          { status: 400 }
+        );
+      }
+      const qty = parseInt(item.quantity, 10);
+      if (isNaN(qty) || qty <= 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            code: 'INVALID_QUANTITY',
+            message: 'Item quantity must be a positive integer.',
+          },
+          { status: 400 }
+        );
+      }
+    }
 
-    // 3. Check if Direct UPI is enabled by administrator
+    // 5. Check if Direct UPI is enabled by administrator
     const upiConfig = await getDirectUpiSettings();
     if (!upiConfig.is_enabled) {
       return NextResponse.json(
-        { error: 'Direct UPI payment is currently paused by administrator. Please select Cash on Delivery.' },
+        {
+          success: false,
+          code: 'UPI_DISABLED',
+          message: 'Direct UPI payment is temporarily paused by store administration. Please select Cash on Delivery.',
+        },
         { status: 403 }
       );
     }
 
-    // 4. Idempotency Protection: If order already exists with this key, return it
-    if (idempotency_key && typeof idempotency_key === 'string') {
-      const { data: existingOrder } = await adminClient
-        .from('orders')
-        .select('id, order_number, total_amount, payment_status, payment_gateway')
-        .eq('idempotency_key', idempotency_key.trim())
-        .maybeSingle();
-
-      if (existingOrder) {
-        const upiUri = buildUpiUri({
-          upiId: upiConfig.receiving_upi_id,
-          payeeName: upiConfig.payee_name,
-          amountPaise: Number(existingOrder.total_amount),
-          orderNumber: existingOrder.order_number,
-        });
-        const qrDataUrl = await generateQrDataUrl(upiUri);
-
-        return NextResponse.json({
-          success: true,
-          order_id: existingOrder.id,
-          order_number: existingOrder.order_number,
-          total_amount: Number(existingOrder.total_amount),
-          upi_uri: upiUri,
-          qr_data_url: qrDataUrl,
-          upi_id: upiConfig.receiving_upi_id,
-          payee_name: upiConfig.payee_name,
-          payment_instructions: upiConfig.payment_instructions,
-          idempotent_retry: true,
-        });
-      }
-    }
-
-    // 5. Generate unique order number
-    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const randSuffix = Math.floor(1000 + Math.random() * 9000);
-    const orderNumber = `WLC-${dateStr}-${randSuffix}`;
-
-    // 6. Server-side delivery charge: strictly ₹99 (9900 paise) per item unit
+    // 6. Calculate server-side delivery charge: strictly ₹99 (9900 paise) per garment unit
     const totalUnits = items.reduce(
       (sum: number, i: any) => sum + (parseInt(i.quantity, 10) || 1),
       0
     );
     const deliveryCharge = totalUnits * 9900;
 
-    // 7. Atomic order creation with inventory lock
-    const { data: orderId, error: rpcError } = await adminClient.rpc('create_order_with_inventory', {
+    // 7. Generate standard order number
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const randSuffix = Math.floor(1000 + Math.random() * 9000);
+    const orderNumber = `WLC-${dateStr}-${randSuffix}`;
+
+    // 8. Atomic order creation with inventory lock via SECURITY DEFINER PostgreSQL procedure
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('create_direct_upi_order', {
       p_user_id: user.id,
       p_customer_name: customer_name.trim(),
       p_customer_email: customer_email.trim(),
@@ -111,91 +149,69 @@ export async function POST(request: Request) {
         quantity: parseInt(i.quantity, 10),
       })),
       p_delivery_charge: deliveryCharge,
-      p_notes: notes.trim(),
+      p_notes: typeof notes === 'string' ? notes.trim() : '',
       p_order_number: orderNumber,
-      p_idempotency_key: idempotency_key ? idempotency_key.trim() : null,
+      p_idempotency_key: idempotency_key ? String(idempotency_key).trim() : null,
     });
 
-    if (rpcError || !orderId) {
-      console.error('Direct UPI order RPC error:', rpcError);
+    if (rpcError) {
+      console.error(`[${requestId}] Direct UPI create_direct_upi_order RPC error:`, rpcError);
+      const isStockIssue = rpcError.message?.toLowerCase().includes('stock') || rpcError.message?.toLowerCase().includes('insufficient');
       return NextResponse.json(
-        { error: rpcError?.message || 'Could not place order due to inventory lock.' },
+        {
+          success: false,
+          code: isStockIssue ? 'INSUFFICIENT_STOCK' : 'ORDER_CREATION_FAILED',
+          message: rpcError.message || 'Could not place order due to inventory lock. Please check garment availability.',
+        },
         { status: 400 }
       );
     }
 
-    // Fetch confirmed order totals
-    const { data: order, error: orderFetchError } = await adminClient
-      .from('orders')
-      .select('id, order_number, total_amount')
-      .eq('id', orderId)
-      .single();
-
-    if (orderFetchError || !order) {
-      return NextResponse.json({ error: 'Order created but failed to load totals.' }, { status: 500 });
+    if (!rpcResult || !rpcResult.order_id || !rpcResult.order_number) {
+      console.error(`[${requestId}] Direct UPI unexpected RPC result:`, rpcResult);
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'ORDER_CREATION_FAILED',
+          message: 'Could not retrieve confirmed order totals. Please try again.',
+        },
+        { status: 500 }
+      );
     }
 
-    // 8. Generate immutable UPI Payment URI & Dynamic Vector QR Code
-    const totalAmountPaise = Number(order.total_amount);
+    // 9. Generate immutable NPCI-compliant UPI Payment URI & Dynamic Vector QR Code
+    const totalAmountPaise = Number(rpcResult.total_amount);
     const upiUri = buildUpiUri({
       upiId: upiConfig.receiving_upi_id,
       payeeName: upiConfig.payee_name,
       amountPaise: totalAmountPaise,
-      orderNumber: order.order_number,
+      orderNumber: rpcResult.order_number,
     });
     const qrDataUrl = await generateQrDataUrl(upiUri);
 
-    // 9. Update order to direct_upi & awaiting_payment
-    await adminClient
-      .from('orders')
-      .update({
-        payment_gateway: 'direct_upi',
-        payment_status: 'awaiting_payment',
-        settlement_status: 'pending',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', orderId);
-
-    // Record in payments table
-    await adminClient.from('payments').insert({
-      order_id: orderId,
-      provider: 'direct_upi',
-      amount: totalAmountPaise,
-      status: 'pending',
-    });
-
-    // Record in payment_attempts
-    await adminClient.from('payment_attempts').insert({
-      order_id: orderId,
-      gateway: 'direct_upi',
-      amount_paise: totalAmountPaise,
-      currency: 'INR',
-      status: 'awaiting_payment',
-      transaction_reference: order.order_number,
-      metadata: {
-        receiving_upi_id: upiConfig.receiving_upi_id,
-        payee_name: upiConfig.payee_name,
-        upi_uri: upiUri,
-        total_units: totalUnits,
-        delivery_charge: deliveryCharge,
-      },
-    });
-
     return NextResponse.json({
       success: true,
-      order_id: order.id,
-      order_number: order.order_number,
+      order_id: rpcResult.order_id,
+      order_number: rpcResult.order_number,
       total_amount: totalAmountPaise,
+      subtotal: Number(rpcResult.subtotal),
+      delivery_charge: Number(rpcResult.delivery_charge),
+      discount_total: Number(rpcResult.discount_total || 0),
       upi_uri: upiUri,
       qr_data_url: qrDataUrl,
       upi_id: upiConfig.receiving_upi_id,
       payee_name: upiConfig.payee_name,
       payment_instructions: upiConfig.payment_instructions,
+      idempotent_retry: Boolean(rpcResult.already_existed),
     });
   } catch (err: any) {
-    console.error('Direct UPI payment initialization error:', err);
+    console.error(`[${requestId}] Direct UPI payment initialization error:`, err);
     return NextResponse.json(
-      { error: err.message || 'Internal server error creating payment.' },
+      {
+        success: false,
+        code: 'PAYMENT_CREATION_FAILED',
+        message: 'Unable to initialize direct UPI payment session. Your order has not been placed.',
+      },
       { status: 500 }
     );
   }

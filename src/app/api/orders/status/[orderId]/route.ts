@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 
 export async function GET(
   request: Request,
@@ -7,34 +7,16 @@ export async function GET(
 ) {
   try {
     const { orderId } = await params;
-    if (!orderId) {
+    if (!orderId?.trim()) {
       return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
     }
 
-    const adminClient = createAdminClient();
+    const supabase = await createClient();
 
-    let query = adminClient.from('orders').select(`
-      id,
-      order_number,
-      customer_name,
-      customer_email,
-      total_amount,
-      status,
-      payment_status,
-      payment_gateway,
-      payment_reference,
-      settlement_status,
-      payment_verified_at,
-      created_at
-    `);
-
-    if (orderId.includes('-') && orderId.length > 30) {
-      query = query.eq('id', orderId);
-    } else {
-      query = query.eq('order_number', orderId);
-    }
-
-    const { data: order, error } = await query.maybeSingle();
+    // Use SECURITY DEFINER RPC to bypass RLS safely
+    const { data: order, error } = await supabase.rpc('get_direct_upi_order_details', {
+      p_order_ref: orderId.trim(),
+    });
 
     if (error || !order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
