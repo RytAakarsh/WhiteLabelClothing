@@ -24,9 +24,21 @@ function LoginForm() {
 
   React.useEffect(() => {
     const errorParam = searchParams.get('error');
+    const authErrorParam = searchParams.get('auth_error');
     const errorDesc = searchParams.get('error_description');
-    if (errorParam || errorDesc) {
-      if (errorDesc?.toLowerCase().includes('not enabled') || errorParam === 'unsupported_provider') {
+
+    if (authErrorParam || errorParam || errorDesc) {
+      if (
+        authErrorParam === 'google_signin_failed' ||
+        errorParam === 'oauth_exchange_failed'
+      ) {
+        setErrorMsg('Your Google Sign-In session could not be completed. Please try again or sign in with your email and password.');
+      } else if (authErrorParam === 'google_access_denied') {
+        setErrorMsg('Google Sign-In was cancelled. Please select your Google account or sign in with email.');
+      } else if (
+        errorDesc?.toLowerCase().includes('not enabled') ||
+        errorParam === 'unsupported_provider'
+      ) {
         setErrorMsg('Google Sign-In is currently pending provider activation in the Supabase console. Please sign in using your email and password below.');
       } else {
         setErrorMsg(errorDesc || errorParam || 'Authentication failed. Please sign in with your email.');

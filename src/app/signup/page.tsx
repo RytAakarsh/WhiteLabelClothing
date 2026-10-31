@@ -26,9 +26,21 @@ function SignupForm() {
 
   React.useEffect(() => {
     const errorParam = searchParams.get('error');
+    const authErrorParam = searchParams.get('auth_error');
     const errorDesc = searchParams.get('error_description');
-    if (errorParam || errorDesc) {
-      if (errorDesc?.toLowerCase().includes('not enabled') || errorParam === 'unsupported_provider') {
+
+    if (authErrorParam || errorParam || errorDesc) {
+      if (
+        authErrorParam === 'google_signin_failed' ||
+        errorParam === 'oauth_exchange_failed'
+      ) {
+        setErrorMsg('Your Google Registration session could not be completed. Please try again or create an account using your email.');
+      } else if (authErrorParam === 'google_access_denied') {
+        setErrorMsg('Google Registration was cancelled. Please select your Google account or register with email.');
+      } else if (
+        errorDesc?.toLowerCase().includes('not enabled') ||
+        errorParam === 'unsupported_provider'
+      ) {
         setErrorMsg('Google Registration is currently pending provider activation in the Supabase console. Please register using your details below.');
       } else {
         setErrorMsg(errorDesc || errorParam || 'Registration failed. Please register with email.');

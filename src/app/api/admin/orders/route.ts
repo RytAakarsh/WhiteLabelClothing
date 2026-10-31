@@ -67,6 +67,25 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: updateErr.message }, { status: 400 });
     }
 
+    // Restore inventory exactly once if order is transitioning to cancelled before fulfillment
+    if (currentOrder.status !== 'cancelled' && status === 'cancelled') {
+      const { data: orderItems } = await client
+        .from('order_items')
+        .select('variant_id, quantity')
+        .eq('order_id', order_id);
+
+      if (orderItems && orderItems.length > 0) {
+        for (const item of orderItems) {
+          if (item.variant_id && item.quantity > 0) {
+            await client.rpc('restore_variant_inventory', {
+              p_variant_id: item.variant_id,
+              p_quantity: item.quantity,
+            });
+          }
+        }
+      }
+    }
+
     // Record status history audit
     if (status && status !== currentOrder.status) {
       await client.from('order_status_history').insert({

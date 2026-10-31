@@ -29,6 +29,12 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [idempotencyKey] = useState<string>(() => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    return `wlc_checkout_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  });
 
   // Autofill user details if signed in
   useEffect(() => {
@@ -51,6 +57,7 @@ export default function CheckoutPage() {
   // Handle form submission
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return; // Prevent double submission
     setErrorMsg(null);
 
     if (items.length === 0) {
@@ -97,6 +104,7 @@ export default function CheckoutPage() {
           delivery_charge: deliveryCharge,
           notes: instructions.trim(),
           payment_method: paymentMethod,
+          idempotency_key: idempotencyKey,
         }),
       });
 
@@ -433,7 +441,7 @@ export default function CheckoutPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-4 text-xs font-semibold uppercase tracking-widest flex items-center justify-center gap-2 transition bg-black text-white hover:bg-neutral-800"
+                className="w-full py-4 text-xs font-semibold uppercase tracking-widest flex items-center justify-center gap-2 transition bg-black text-white hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 <span>{submitting ? 'Placing Order...' : 'Confirm & Place Order'}</span>
                 <ArrowRight className="w-4 h-4" />
