@@ -26,7 +26,7 @@ export default function CheckoutPage() {
   const [postalCode, setPostalCode] = useState('');
   const [country, setCountry] = useState('India');
   const [instructions, setInstructions] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'upi' | 'card_pending'>('cod');
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'upi' | 'card_pending'>('upi');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [idempotencyKey] = useState<string>(() => {
@@ -430,34 +430,37 @@ export default function CheckoutPage() {
                 3. Payment Method
               </h2>
               <div className="space-y-3">
-                {/* 1. Cash on Delivery */}
-                <label className={`block p-4 border cursor-pointer transition ${
-                  paymentMethod === 'cod' ? 'border-black bg-[#F7F7F7]' : 'border-[#E5E5E5] hover:border-neutral-400'
-                }`}>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="payment_method"
-                      value="cod"
-                      checked={paymentMethod === 'cod'}
-                      onChange={() => setPaymentMethod('cod')}
-                      className="accent-black"
-                    />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-black block">
-                          Cash on Delivery (Pay at Doorstep)
-                        </span>
-                        <span className="text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 bg-neutral-200 text-neutral-800 rounded-xs">
-                          Default
+                {/* 1. Cash on Delivery (Preserved in code, hidden from customer-facing checkout UI) */}
+                {/* To re-enable COD in the future, set showCod to true */}
+                {false && (
+                  <label className={`block p-4 border cursor-pointer transition ${
+                    paymentMethod === 'cod' ? 'border-black bg-[#F7F7F7]' : 'border-[#E5E5E5] hover:border-neutral-400'
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="payment_method"
+                        value="cod"
+                        checked={paymentMethod === 'cod'}
+                        onChange={() => setPaymentMethod('cod')}
+                        className="accent-black"
+                      />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-black block">
+                            Cash on Delivery (Pay at Doorstep)
+                          </span>
+                          <span className="text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 bg-neutral-200 text-neutral-800 rounded-xs">
+                            Default
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-neutral-500 block mt-0.5">
+                          Pay cash or scan courier UPI QR code upon arrival at your doorstep.
                         </span>
                       </div>
-                      <span className="text-[11px] text-neutral-500 block mt-0.5">
-                        Pay cash or scan courier UPI QR code upon arrival at your doorstep.
-                      </span>
                     </div>
-                  </div>
-                </label>
+                  </label>
+                )}
 
                 {/* 2. Pay Online via UPI */}
                 <label className={`block p-4 border cursor-pointer transition ${
@@ -488,29 +491,31 @@ export default function CheckoutPage() {
                   </div>
                 </label>
 
-                {/* 3. Cards & NetBanking (Pending) */}
-                <label className={`block p-4 border cursor-pointer transition ${
-                  paymentMethod === 'card_pending' ? 'border-black bg-[#F7F7F7]' : 'border-[#E5E5E5] hover:border-neutral-400 opacity-60'
-                }`}>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="payment_method"
-                      value="card_pending"
-                      checked={paymentMethod === 'card_pending'}
-                      onChange={() => setPaymentMethod('card_pending')}
-                      className="accent-black"
-                    />
-                    <div>
-                      <span className="text-xs font-semibold uppercase tracking-wider text-black block">
-                        Credit / Debit Cards & NetBanking (Pending Activation)
-                      </span>
-                      <span className="text-[11px] text-neutral-500 block mt-0.5">
-                        Direct merchant card gateway onboarding in progress. Please use UPI or COD.
-                      </span>
+                {/* 3. Cards & NetBanking (Pending - hidden, only UPI customer-facing) */}
+                {false && (
+                  <label className={`block p-4 border cursor-pointer transition ${
+                    paymentMethod === 'card_pending' ? 'border-black bg-[#F7F7F7]' : 'border-[#E5E5E5] hover:border-neutral-400 opacity-60'
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="payment_method"
+                        value="card_pending"
+                        checked={paymentMethod === 'card_pending'}
+                        onChange={() => setPaymentMethod('card_pending')}
+                        className="accent-black"
+                      />
+                      <div>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-black block">
+                          Credit / Debit Cards & NetBanking (Pending Activation)
+                        </span>
+                        <span className="text-[11px] text-neutral-500 block mt-0.5">
+                          Direct merchant card gateway onboarding in progress. Please use UPI.
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </label>
+                  </label>
+                )}
               </div>
             </div>
           </div>
