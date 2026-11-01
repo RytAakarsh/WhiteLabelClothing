@@ -68,7 +68,13 @@ export async function PUT(request: Request) {
     }
 
     // Restore inventory exactly once if order is transitioning to cancelled before fulfillment
-    if (currentOrder.status !== 'cancelled' && status === 'cancelled') {
+    // Only restore if stock was actually deducted (e.g. COD orders or paid/approved UPI orders)
+    const stockWasDeducted =
+      currentOrder.payment_gateway === 'cod' ||
+      currentOrder.payment_status === 'paid' ||
+      currentOrder.status === 'confirmed';
+
+    if (currentOrder.status !== 'cancelled' && status === 'cancelled' && stockWasDeducted) {
       const { data: orderItems } = await client
         .from('order_items')
         .select('variant_id, quantity')

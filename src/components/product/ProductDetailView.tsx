@@ -7,8 +7,20 @@ import { useRouter } from 'next/navigation';
 import { Product, ProductVariant } from '@/lib/types';
 import { formatPrice, calculateDiscountPercentage } from '@/lib/utils';
 import { useCart } from '@/lib/context/CartContext';
-import { Check, ShieldCheck, Truck, RefreshCw, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Check, ShieldCheck, Truck, RefreshCw, ShoppingBag, ArrowRight, Ruler, X } from 'lucide-react';
 import ProductGrid from './ProductGrid';
+
+const JACKET_MEASUREMENTS: Record<string, { length: string; shoulder: string }> = {
+  L: { length: '25 inches', shoulder: '19 inches' },
+  XL: { length: '27 inches', shoulder: '20 inches' },
+  XXL: { length: '28 inches', shoulder: '22 inches' },
+};
+
+const SWEATSHIRT_MEASUREMENTS: Record<string, { length: string; shoulder: string }> = {
+  M: { length: '25 inches', shoulder: '18 inches' },
+  L: { length: '26 inches', shoulder: '19 inches' },
+  XL: { length: '27 inches', shoulder: '20 inches' },
+};
 
 interface ProductDetailViewProps {
   product: Product;
@@ -18,6 +30,16 @@ interface ProductDetailViewProps {
 export default function ProductDetailView({ product, relatedProducts }: ProductDetailViewProps) {
   const router = useRouter();
   const { addItem, setIsCartOpen } = useCart();
+
+  // Category detection for garment measurements
+  const categorySlug = (product.category?.slug || '').toLowerCase();
+  const categoryName = (product.category?.name || '').toLowerCase();
+  const productNameLower = (product.name || '').toLowerCase();
+
+  const isJacket = categorySlug.includes('jacket') || categoryName.includes('jacket') || productNameLower.includes('jacket');
+  const isSweatshirt = categorySlug.includes('sweatshirt') || categoryName.includes('sweatshirt') || productNameLower.includes('sweatshirt');
+
+  const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
 
   // Images setup
   const images = (product.images && product.images.length > 0)
@@ -42,6 +64,14 @@ export default function ProductDetailView({ product, relatedProducts }: ProductD
 
   const isOutOfStock = !selectedVariant || selectedVariant.stock_quantity <= 0;
   const maxAvailable = selectedVariant?.stock_quantity ?? 0;
+
+  // Selected size garment measurements
+  const selectedSizeKey = (selectedVariant?.size || '').trim().toUpperCase();
+  const currentMeasurements = isJacket
+    ? JACKET_MEASUREMENTS[selectedSizeKey]
+    : isSweatshirt
+    ? SWEATSHIRT_MEASUREMENTS[selectedSizeKey]
+    : null;
 
   const handleAddToCart = () => {
     if (!selectedVariant) {
@@ -217,23 +247,30 @@ export default function ProductDetailView({ product, relatedProducts }: ProductD
 
           {/* Size Selector */}
           <div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs font-semibold uppercase tracking-widest text-black">
-                Select Size
-              </span>
+            <div className="flex justify-between items-center mb-2.5">
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-semibold uppercase tracking-widest text-black">
+                  Select Size
+                </span>
+                {(isJacket || isSweatshirt) && (
+                  <button
+                    type="button"
+                    onClick={() => setIsSizeGuideOpen(true)}
+                    className="inline-flex items-center gap-1 text-[11px] font-medium tracking-wider uppercase text-neutral-500 hover:text-black underline underline-offset-4 transition"
+                  >
+                    <Ruler className="w-3.5 h-3.5" />
+                    <span>Size Guide</span>
+                  </button>
+                )}
+              </div>
+
               {selectedVariant && (
                 <span className={`text-[11px] font-medium uppercase tracking-wider ${
-                  selectedVariant.stock_quantity > 0 && selectedVariant.stock_quantity <= 3
-                    ? 'text-amber-700'
-                    : selectedVariant.stock_quantity > 0
+                  selectedVariant.stock_quantity > 0
                     ? 'text-emerald-700'
                     : 'text-neutral-400'
                 }`}>
-                  {selectedVariant.stock_quantity > 0 && selectedVariant.stock_quantity <= 3
-                    ? `Only ${selectedVariant.stock_quantity} Left`
-                    : selectedVariant.stock_quantity > 0
-                    ? 'In Stock'
-                    : 'Sold Out'}
+                  {selectedVariant.stock_quantity > 0 ? 'In Stock' : 'Sold Out'}
                 </span>
               )}
             </div>
@@ -255,7 +292,7 @@ export default function ProductDetailView({ product, relatedProducts }: ProductD
                     }}
                     className={`min-w-12 h-11 px-4 text-xs font-semibold uppercase tracking-wider border transition flex items-center justify-center ${
                       isSelected
-                        ? 'bg-black text-white border-black ring-1 ring-black'
+                        ? 'bg-black text-white border-black ring-2 ring-black ring-offset-1 shadow-xs'
                         : isSoldOut
                         ? 'bg-[#F7F7F7] text-neutral-300 border-[#E5E5E5] line-through cursor-not-allowed'
                         : 'bg-white text-black border-[#E5E5E5] hover:border-black'
@@ -266,6 +303,23 @@ export default function ProductDetailView({ product, relatedProducts }: ProductD
                 );
               })}
             </div>
+
+            {/* Instant Garment Measurements Display */}
+            {currentMeasurements && (
+              <div className="mt-3.5 p-3 bg-neutral-50 border border-neutral-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-4">
+                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-neutral-500 font-semibold">
+                    <Ruler className="w-3.5 h-3.5 text-black shrink-0" />
+                    <span>Garment Measurements ({selectedVariant?.size}):</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-black font-medium tracking-wide">
+                    <span>Length: <strong className="font-semibold text-black">{currentMeasurements.length}</strong></span>
+                    <span className="text-neutral-300">|</span>
+                    <span>Shoulder: <strong className="font-semibold text-black">{currentMeasurements.shoulder}</strong></span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Quantity Selector */}
@@ -384,6 +438,109 @@ export default function ProductDetailView({ product, relatedProducts }: ProductD
           </div>
           <ProductGrid products={relatedProducts} />
         </section>
+      )}
+
+      {/* Luxury Size Guide Modal */}
+      {isSizeGuideOpen && (isJacket || isSweatshirt) && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+          onClick={() => setIsSizeGuideOpen(false)}
+        >
+          <div
+            className="bg-white border border-[#E5E5E5] max-w-lg w-full p-6 sm:p-8 shadow-2xl relative my-8 animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setIsSizeGuideOpen(false)}
+              className="absolute top-5 right-5 p-1 text-neutral-400 hover:text-black transition"
+              aria-label="Close size guide"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Header */}
+            <div className="pr-8 mb-6">
+              <span className="text-[10px] uppercase tracking-widest text-neutral-400 font-semibold block mb-1">
+                Precision Sizing
+              </span>
+              <h3 className="text-xl sm:text-2xl font-serif uppercase tracking-wider text-black">
+                {isJacket ? 'Jackets' : 'Sweatshirts'} Size Guide
+              </h3>
+              <p className="text-xs text-neutral-500 mt-1.5 leading-relaxed">
+                All measurements are exact garment dimensions in inches. Designed with an architectural, structured drape.
+              </p>
+            </div>
+
+            {/* Measurements Table */}
+            <div className="border border-[#E5E5E5] mb-6 overflow-hidden">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="bg-neutral-50 border-b border-[#E5E5E5] text-[11px] font-semibold uppercase tracking-wider text-neutral-600">
+                    <th className="py-3 px-4">Size</th>
+                    <th className="py-3 px-4">Length</th>
+                    <th className="py-3 px-4">Shoulder</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E5E5E5]">
+                  {Object.entries(isJacket ? JACKET_MEASUREMENTS : SWEATSHIRT_MEASUREMENTS).map(([size, measurements]) => {
+                    const isCurrent = size === selectedSizeKey;
+                    return (
+                      <tr
+                        key={size}
+                        className={`transition ${
+                          isCurrent
+                            ? 'bg-neutral-100 font-semibold text-black'
+                            : 'hover:bg-neutral-50 text-neutral-700'
+                        }`}
+                      >
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-black">{size}</span>
+                            {isCurrent && (
+                              <span className="text-[9px] uppercase tracking-widest bg-black text-white px-1.5 py-0.5 font-medium">
+                                Selected
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4">{measurements.length}</td>
+                        <td className="py-3.5 px-4">{measurements.shoulder}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Measurement Instructions */}
+            <div className="p-4 bg-neutral-50 border border-neutral-200 text-xs text-neutral-600 space-y-1.5 mb-6">
+              <p className="font-semibold uppercase tracking-wider text-[11px] text-black">
+                How to Measure
+              </p>
+              <ul className="space-y-1 text-[11px] text-neutral-500">
+                <li>
+                  <strong className="text-neutral-800">Length:</strong> Measured from the high point of the shoulder straight down to the bottom hem.
+                </li>
+                <li>
+                  <strong className="text-neutral-800">Shoulder:</strong> Measured straight across from shoulder seam to shoulder seam.
+                </li>
+              </ul>
+            </div>
+
+            {/* Close CTA */}
+            <button
+              type="button"
+              onClick={() => setIsSizeGuideOpen(false)}
+              className="w-full py-3.5 bg-black text-white text-xs font-semibold uppercase tracking-widest hover:bg-neutral-800 transition"
+            >
+              Close Size Guide
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -169,10 +169,10 @@ export default function AdminOrdersPage() {
     }
   };
 
-  // Direct UPI: Reject payment & restore stock
+  // Direct UPI: Reject payment & cancel unconfirmed order
   const handleRejectDirectUpi = async () => {
     if (!selectedOrder) return;
-    if (!confirm(`Are you sure you want to REJECT this payment and CANCEL order ${selectedOrder.order_number}? This will restore all garment stock.`)) {
+    if (!confirm(`Are you sure you want to REJECT this payment and CANCEL order ${selectedOrder.order_number}?`)) {
       return;
     }
 
@@ -195,7 +195,7 @@ export default function AdminOrdersPage() {
         throw new Error(resJson.error || 'Failed to reject payment.');
       }
 
-      setVerifyMsg('Payment rejected. Order cancelled and inventory restored.');
+      setVerifyMsg('Payment rejected. Order cancelled.');
       await fetchOrders();
     } catch (err: any) {
       setVerifyError(err.message || 'Error rejecting payment.');
