@@ -1,25 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-
-async function checkAdmin(supabase: any, adminClient: any) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { authorized: false, status: 401, error: 'Unauthorized.' };
-
-  const { data: roleData } = await adminClient
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .eq('role', 'admin')
-    .maybeSingle();
-
-  if (!roleData) return { authorized: false, status: 403, error: 'Forbidden. Admin privileges required.' };
-
-  return { authorized: true, user };
-}
+import { verifyAdmin } from '@/lib/auth/admin';
 
 export async function GET(
   request: Request,
@@ -27,15 +7,12 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const adminClient = createAdminClient();
-
-    const authCheck = await checkAdmin(supabase, adminClient);
-    if (!authCheck.authorized) {
-      return NextResponse.json({ error: authCheck.error }, { status: authCheck.status });
+    const auth = await verifyAdmin();
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
-    const { data: coupon, error } = await adminClient
+    const { data: coupon, error } = await auth.client
       .from('coupons')
       .select('*')
       .eq('id', id)
@@ -48,6 +25,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, coupon });
   } catch (err: any) {
+    console.error('[Admin Coupon GET by ID] Exception:', err);
     return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
   }
 }
@@ -58,12 +36,9 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const adminClient = createAdminClient();
-
-    const authCheck = await checkAdmin(supabase, adminClient);
-    if (!authCheck.authorized) {
-      return NextResponse.json({ error: authCheck.error }, { status: authCheck.status });
+    const auth = await verifyAdmin();
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
     const body = await request.json();
@@ -100,21 +75,36 @@ export async function PUT(
       if (isNaN(num) || num <= 0) {
         return NextResponse.json({ error: 'Discount value must be a positive number.' }, { status: 400 });
       }
+      if (discount_type === 'percentage' && num > 100) {
+        return NextResponse.json({ error: 'Percentage discount cannot exceed 100%.' }, { status: 400 });
+      }
       updates.discount_value = num;
     }
-    if (max_discount_paise !== undefined) updates.max_discount_paise = max_discount_paise ? Number(max_discount_paise) : null;
-    if (minimum_order_paise !== undefined) updates.minimum_order_paise = Number(minimum_order_paise) || 0;
-    if (usage_limit !== undefined) updates.usage_limit = usage_limit ? parseInt(usage_limit, 10) : null;
-    if (per_customer_limit !== undefined) updates.per_customer_limit = per_customer_limit ? parseInt(per_customer_limit, 10) : null;
-    if (starts_at !== undefined) updates.starts_at = starts_at ? new Date(starts_at).toISOString() : new Date().toISOString();
-    if (expires_at !== undefined) updates.expires_at = expires_at ? new Date(expires_at).toISOString() : null;
+    if (max_discount_paise !== undefined) {
+      updates.max_discount_paise = max_discount_paise ? Number(max_discount_paise) : null;
+    }
+    if (minimum_order_paise !== undefined) {
+      updates.minimum_order_paise = Math.max(0, Number(minimum_order_paise) || 0);
+    }
+    if (usage_limit !== undefined) {
+      updates.usage_limit = usage_limit ? parseInt(String(usage_limit), 10) : null;
+    }
+    if (per_customer_limit !== undefined) {
+      updates.per_customer_limit = per_customer_limit ? parseInt(String(per_customer_limit), 10) : null;
+    }
+    if (starts_at !== undefined) {
+      updates.starts_at = starts_at ? new Date(starts_at).toISOString() : new Date().toISOString();
+    }
+    if (expires_at !== undefined) {
+      updates.expires_at = expires_at ? new Date(expires_at).toISOString() : null;
+    }
     if (applicable_products !== undefined) updates.applicable_products = applicable_products;
     if (applicable_categories !== undefined) updates.applicable_categories = applicable_categories;
     if (first_order_only !== undefined) updates.first_order_only = Boolean(first_order_only);
     if (free_shipping !== undefined) updates.free_shipping = Boolean(free_shipping);
     if (is_active !== undefined) updates.is_active = Boolean(is_active);
 
-    const { data: updated, error } = await adminClient
+    const { data: updated, error } = await auth.client
       .from('coupons')
       .update(updates)
       .eq('id', id)
@@ -122,7 +112,7 @@ export async function PUT(
       .single();
 
     if (error) {
-      console.error('Error updating coupon:', error);
+      console.error('[Admin Coupon PUT] Error updating coupon:', error);
       return NextResponse.json({ error: 'Failed to update coupon.' }, { status: 500 });
     }
 
@@ -132,7 +122,7 @@ export async function PUT(
       coupon: updated,
     });
   } catch (err: any) {
-    console.error('Coupon PUT error:', err);
+    console.error('[Admin Coupon PUT] Exception:', err);
     return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
   }
 }
@@ -143,18 +133,15 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const adminClient = createAdminClient();
-
-    const authCheck = await checkAdmin(supabase, adminClient);
-    if (!authCheck.authorized) {
-      return NextResponse.json({ error: authCheck.error }, { status: authCheck.status });
+    const auth = await verifyAdmin();
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
     const body = await request.json();
     const { is_active } = body;
 
-    const { data: updated, error } = await adminClient
+    const { data: updated, error } = await auth.client
       .from('coupons')
       .update({
         is_active: Boolean(is_active),
@@ -165,6 +152,7 @@ export async function PATCH(
       .single();
 
     if (error) {
+      console.error('[Admin Coupon PATCH] Error toggling status:', error);
       return NextResponse.json({ error: 'Failed to toggle status.' }, { status: 500 });
     }
 
@@ -174,6 +162,7 @@ export async function PATCH(
       coupon: updated,
     });
   } catch (err: any) {
+    console.error('[Admin Coupon PATCH] Exception:', err);
     return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
   }
 }
@@ -184,16 +173,13 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const adminClient = createAdminClient();
-
-    const authCheck = await checkAdmin(supabase, adminClient);
-    if (!authCheck.authorized) {
-      return NextResponse.json({ error: authCheck.error }, { status: authCheck.status });
+    const auth = await verifyAdmin();
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
     // Soft delete: set is_deleted = true to preserve historical redemptions
-    const { error } = await adminClient
+    const { error } = await auth.client
       .from('coupons')
       .update({
         is_deleted: true,
@@ -203,8 +189,8 @@ export async function DELETE(
       .eq('id', id);
 
     if (error) {
-      console.error('Error deleting coupon:', error);
-      return NextResponse.json({ error: 'Failed to delete coupon.' }, { status: 500 });
+      console.error('[Admin Coupon DELETE] Error archiving coupon:', error);
+      return NextResponse.json({ error: 'Failed to archive coupon.' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -212,6 +198,7 @@ export async function DELETE(
       message: 'Coupon deleted and archived successfully.',
     });
   } catch (err: any) {
+    console.error('[Admin Coupon DELETE] Exception:', err);
     return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
   }
 }

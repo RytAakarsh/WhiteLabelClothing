@@ -2,21 +2,35 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAdminSupabaseConfig } from '@/lib/supabase/config';
 import { User } from '@supabase/supabase-js';
+import { ADMIN_EMAIL, APPROVED_ADMIN_EMAILS, isAllowedAdminEmail } from './constants';
 
-export const ADMIN_EMAIL = 'info.whitelabelclothing@gmail.com';
+export { ADMIN_EMAIL, APPROVED_ADMIN_EMAILS, isAllowedAdminEmail };
 
-export interface AdminVerificationResult {
+export interface AdminAuthSuccess {
+  authorized: true;
   user: User;
-  client: any; // Supabase client authorized for admin operations
+  client: any;
   isServiceRole: boolean;
 }
 
+export interface AdminAuthFailure {
+  authorized: false;
+  status: 401 | 403;
+  error: string;
+  user: User | null;
+}
+
+export type AdminAuthResult = AdminAuthSuccess | AdminAuthFailure;
+
 /**
- * Robust server-side verification of administrator privileges.
- * Verifies authenticated session from cookies and checks admin role
- * via database user_roles, official admin email, and RLS policies.
+ * Standardized server-side verification of administrator privileges.
+ * 
+ * Returns explicit status codes:
+ * - 401 if user is unauthenticated
+ * - 403 if user is authenticated but not an authorized administrator
+ * - 200 (authorized: true) with appropriate database client if authorized
  */
-export async function verifyAdminSession(): Promise<AdminVerificationResult | null> {
+export async function verifyAdmin(): Promise<AdminAuthResult> {
   try {
     const supabase = await createClient();
     const {
@@ -25,25 +39,33 @@ export async function verifyAdminSession(): Promise<AdminVerificationResult | nu
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      return null;
+      return {
+        authorized: false,
+        status: 401,
+        error: 'Unauthorized: Authenticated session required.',
+        user: null,
+      };
     }
 
-    const isOfficialAdminEmail = user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-
-    // Check user_roles using authenticated client
+    const isEmailAdmin = isAllowedAdminEmail(user.email);
     let hasAdminRole = false;
 
-    const { data: userRole } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    // Check user_roles using the authenticated SSR client (auth.uid() satisfies RLS)
+    try {
+      const { data: userRole } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-    if (userRole && userRole.role === 'admin') {
-      hasAdminRole = true;
+      if (userRole && userRole.role === 'admin') {
+        hasAdminRole = true;
+      }
+    } catch (err) {
+      console.warn('[verifyAdmin] Authenticated user_roles check warning:', err);
     }
 
-    // Also check via admin client if available
+    // Also inspect via admin client if service role key is available
     let adminClient: any = null;
     let isServiceRole = false;
     try {
@@ -62,27 +84,63 @@ export async function verifyAdminSession(): Promise<AdminVerificationResult | nu
           hasAdminRole = true;
         }
       }
-    } catch (err) {
-      // Ignore admin client creation issues if fallback
+    } catch {
+      // Fallback mode: ignore
     }
 
-    // Grant access if official admin email or has admin role in database
-    if (!isOfficialAdminEmail && !hasAdminRole) {
-      return null;
+    // Deny access if neither email nor role qualifies
+    if (!isEmailAdmin && !hasAdminRole) {
+      console.warn(
+        `[Admin Auth] Access denied for user: ${user.id} (${user.email || 'no-email'}) - Lacks administrator privileges.`
+      );
+      return {
+        authorized: false,
+        status: 403,
+        error: 'Forbidden. Admin privileges required.',
+        user,
+      };
     }
 
-    // Select the best client for administrative mutations:
-    // If service role key is active, use adminClient (full bypass).
-    // Otherwise, use authenticated supabase client where auth.uid() satisfies is_admin() RLS!
+    // Select the best client for administrative operations:
+    // If service role key is available, use adminClient (bypasses RLS).
+    // Otherwise, use authenticated SSR client where auth.uid() satisfies is_admin() RLS!
     const effectiveClient = isServiceRole && adminClient ? adminClient : supabase;
 
     return {
+      authorized: true,
       user,
       client: effectiveClient,
       isServiceRole,
     };
-  } catch (err) {
-    console.error('[verifyAdminSession] Exception during authorization check:', err);
+  } catch (err: any) {
+    console.error('[verifyAdmin] Exception during authorization check:', err);
+    return {
+      authorized: false,
+      status: 403,
+      error: 'Forbidden. Admin verification error.',
+      user: null,
+    };
+  }
+}
+
+export interface AdminVerificationResult {
+  user: User;
+  client: any;
+  isServiceRole: boolean;
+}
+
+/**
+ * Backward-compatible helper for existing admin route handlers.
+ * Returns null if unauthorized, or { user, client, isServiceRole } if authorized.
+ */
+export async function verifyAdminSession(): Promise<AdminVerificationResult | null> {
+  const result = await verifyAdmin();
+  if (!result.authorized) {
     return null;
   }
+  return {
+    user: result.user,
+    client: result.client,
+    isServiceRole: result.isServiceRole,
+  };
 }

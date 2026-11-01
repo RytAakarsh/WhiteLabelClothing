@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
+import { isAllowedAdminEmail } from '@/lib/auth/constants';
 
 interface AuthContextType {
   user: User | null;
@@ -30,21 +31,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const supabase = useMemo(() => createClient(), []);
 
-  const checkRole = async (userId: string) => {
+  const checkRole = async (currentUser: User) => {
+    const isEmailAdmin = isAllowedAdminEmail(currentUser.email);
     try {
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', userId)
+        .eq('user_id', currentUser.id)
         .maybeSingle();
 
       if (!error && data && data.role === 'admin') {
+        setIsAdmin(true);
+      } else if (isEmailAdmin) {
         setIsAdmin(true);
       } else {
         setIsAdmin(false);
       }
     } catch {
-      setIsAdmin(false);
+      setIsAdmin(isEmailAdmin);
     }
   };
 
@@ -54,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        await checkRole(session.user.id);
+        await checkRole(session.user);
       } else {
         setIsAdmin(false);
       }
@@ -73,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(newSession);
         setUser(newSession?.user ?? null);
         if (newSession?.user) {
-          await checkRole(newSession.user.id);
+          await checkRole(newSession.user);
         } else {
           setIsAdmin(false);
         }

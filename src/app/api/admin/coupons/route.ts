@@ -1,43 +1,21 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-
-// Helper to verify admin
-async function checkAdmin(supabase: any, adminClient: any) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { authorized: false, status: 401, error: 'Unauthorized.' };
-
-  const { data: roleData } = await adminClient
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', user.id)
-    .eq('role', 'admin')
-    .maybeSingle();
-
-  if (!roleData) return { authorized: false, status: 403, error: 'Forbidden. Admin privileges required.' };
-
-  return { authorized: true, user };
-}
+import { verifyAdmin } from '@/lib/auth/admin';
 
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const adminClient = createAdminClient();
-
-    const authCheck = await checkAdmin(supabase, adminClient);
-    if (!authCheck.authorized) {
-      return NextResponse.json({ error: authCheck.error }, { status: authCheck.status });
+    const auth = await verifyAdmin();
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
+
+    const client = auth.client;
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search')?.trim().toUpperCase();
     const statusFilter = searchParams.get('status'); // 'all' | 'active' | 'inactive' | 'expired'
     const sort = searchParams.get('sort') || 'created_at_desc';
 
-    let query = adminClient
+    let query = client
       .from('coupons')
       .select('*')
       .eq('is_deleted', false);
@@ -63,19 +41,21 @@ export async function GET(request: Request) {
     const { data: coupons, error } = await query;
 
     if (error) {
-      console.error('Error fetching coupons:', error);
+      console.error('[Admin Coupons GET] Error fetching coupons:', error);
       return NextResponse.json({ error: 'Failed to fetch coupons.' }, { status: 500 });
     }
 
-    let filtered = coupons || [];
+    let filtered: any[] = coupons || [];
     if (statusFilter === 'expired') {
       const now = new Date();
-      filtered = filtered.filter((c) => c.expires_at && new Date(c.expires_at) < now);
+      filtered = filtered.filter((c: any) => c.expires_at && new Date(c.expires_at) < now);
     }
 
     // Calculate summary statistics
-    const totalActive = (coupons || []).filter((c) => c.is_active && (!c.expires_at || new Date(c.expires_at) >= new Date())).length;
-    const totalRedemptions = (coupons || []).reduce((sum, c) => sum + (c.usage_count || 0), 0);
+    const totalActive = (coupons || []).filter(
+      (c: any) => c.is_active && (!c.expires_at || new Date(c.expires_at) >= new Date())
+    ).length;
+    const totalRedemptions = (coupons || []).reduce((sum: number, c: any) => sum + (c.usage_count || 0), 0);
 
     return NextResponse.json({
       success: true,
@@ -87,20 +67,19 @@ export async function GET(request: Request) {
       },
     });
   } catch (err: any) {
-    console.error('Coupons GET error:', err);
+    console.error('[Admin Coupons GET] Exception:', err);
     return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const adminClient = createAdminClient();
-
-    const authCheck = await checkAdmin(supabase, adminClient);
-    if (!authCheck.authorized) {
-      return NextResponse.json({ error: authCheck.error }, { status: authCheck.status });
+    const auth = await verifyAdmin();
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
+
+    const client = auth.client;
 
     const body = await request.json();
     const {
@@ -121,7 +100,7 @@ export async function POST(request: Request) {
       is_active = true,
     } = body;
 
-    // Validate Code
+    // Validate Code (alphanumeric uppercase, min 3 chars)
     const cleanCode = code ? code.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '') : '';
     if (!cleanCode || cleanCode.length < 3) {
       return NextResponse.json(
@@ -144,8 +123,50 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Percentage discount cannot exceed 100%.' }, { status: 400 });
     }
 
+    // Validate max cap
+    if (max_discount_paise !== null && max_discount_paise !== undefined) {
+      const numCap = Number(max_discount_paise);
+      if (isNaN(numCap) || numCap < 0) {
+        return NextResponse.json({ error: 'Maximum discount cap must be nonnegative.' }, { status: 400 });
+      }
+    }
+
+    // Validate minimum order
+    const numMinOrder = Number(minimum_order_paise) || 0;
+    if (numMinOrder < 0) {
+      return NextResponse.json({ error: 'Minimum order amount must be nonnegative.' }, { status: 400 });
+    }
+
+    // Validate usage limits
+    if (usage_limit !== null && usage_limit !== undefined && usage_limit !== '') {
+      const numLimit = parseInt(String(usage_limit), 10);
+      if (isNaN(numLimit) || numLimit <= 0) {
+        return NextResponse.json({ error: 'Global usage limit must be a positive integer.' }, { status: 400 });
+      }
+    }
+
+    if (per_customer_limit !== null && per_customer_limit !== undefined && per_customer_limit !== '') {
+      const numCustLimit = parseInt(String(per_customer_limit), 10);
+      if (isNaN(numCustLimit) || numCustLimit <= 0) {
+        return NextResponse.json({ error: 'Per-customer limit must be a positive integer.' }, { status: 400 });
+      }
+    }
+
+    // Validate date chronology
+    const startDate = starts_at ? new Date(starts_at) : new Date();
+    let expiryDate: Date | null = null;
+    if (expires_at) {
+      expiryDate = new Date(expires_at);
+      if (expiryDate < startDate) {
+        return NextResponse.json(
+          { error: 'Expiration date must be later than or equal to the start date.' },
+          { status: 400 }
+        );
+      }
+    }
+
     // Check duplicate code
-    const { data: existing } = await adminClient
+    const { data: existing } = await client
       .from('coupons')
       .select('id, is_deleted')
       .eq('code', cleanCode)
@@ -157,36 +178,36 @@ export async function POST(request: Request) {
 
     const payload: any = {
       code: cleanCode,
-      description: description.trim(),
+      description: description ? description.trim() : '',
       discount_type,
       discount_value: numDiscountValue,
       max_discount_paise: max_discount_paise ? Number(max_discount_paise) : null,
-      minimum_order_paise: minimum_order_paise ? Number(minimum_order_paise) : 0,
-      usage_limit: usage_limit ? parseInt(usage_limit, 10) : null,
-      per_customer_limit: per_customer_limit ? parseInt(per_customer_limit, 10) : null,
-      starts_at: starts_at ? new Date(starts_at).toISOString() : new Date().toISOString(),
-      expires_at: expires_at ? new Date(expires_at).toISOString() : null,
+      minimum_order_paise: numMinOrder,
+      usage_limit: usage_limit ? parseInt(String(usage_limit), 10) : null,
+      per_customer_limit: per_customer_limit ? parseInt(String(per_customer_limit), 10) : null,
+      starts_at: startDate.toISOString(),
+      expires_at: expiryDate ? expiryDate.toISOString() : null,
       applicable_products: Array.isArray(applicable_products) ? applicable_products : [],
       applicable_categories: Array.isArray(applicable_categories) ? applicable_categories : [],
       first_order_only: Boolean(first_order_only),
       free_shipping: Boolean(free_shipping),
       is_active: Boolean(is_active),
       is_deleted: false,
-      created_by: authCheck.user.email || authCheck.user.id,
+      created_by: auth.user.email || auth.user.id,
       updated_at: new Date().toISOString(),
     };
 
     let result;
     if (existing && existing.is_deleted) {
       // Restore previously soft-deleted coupon with updated parameters
-      result = await adminClient
+      result = await client
         .from('coupons')
         .update(payload)
         .eq('id', existing.id)
         .select('*')
         .single();
     } else {
-      result = await adminClient
+      result = await client
         .from('coupons')
         .insert(payload)
         .select('*')
@@ -194,7 +215,7 @@ export async function POST(request: Request) {
     }
 
     if (result.error) {
-      console.error('Error inserting coupon:', result.error);
+      console.error('[Admin Coupons POST] Error inserting coupon:', result.error);
       return NextResponse.json({ error: 'Failed to create coupon code.' }, { status: 500 });
     }
 
@@ -204,7 +225,7 @@ export async function POST(request: Request) {
       coupon: result.data,
     });
   } catch (err: any) {
-    console.error('Coupons POST error:', err);
+    console.error('[Admin Coupons POST] Exception:', err);
     return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 });
   }
 }

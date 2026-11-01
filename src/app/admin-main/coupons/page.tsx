@@ -171,6 +171,44 @@ export default function AdminCouponsPage() {
         return;
       }
 
+      if (
+        formData.discount_type === 'percentage' &&
+        formData.max_discount_inr !== '' &&
+        Number(formData.max_discount_inr) <= 0
+      ) {
+        setFormError('Maximum discount cap must be greater than zero.');
+        setSaving(false);
+        return;
+      }
+
+      if (formData.min_order_inr !== '' && Number(formData.min_order_inr) < 0) {
+        setFormError('Minimum order value cannot be negative.');
+        setSaving(false);
+        return;
+      }
+
+      if (formData.usage_limit !== '' && Number(formData.usage_limit) <= 0) {
+        setFormError('Global usage limit must be at least 1.');
+        setSaving(false);
+        return;
+      }
+
+      if (formData.per_customer_limit !== '' && Number(formData.per_customer_limit) <= 0) {
+        setFormError('Per-customer limit must be at least 1.');
+        setSaving(false);
+        return;
+      }
+
+      if (formData.starts_at && formData.expires_at) {
+        const start = new Date(formData.starts_at);
+        const end = new Date(formData.expires_at);
+        if (end < start) {
+          setFormError('Expiration date must be later than or equal to the start date.');
+          setSaving(false);
+          return;
+        }
+      }
+
       const payload = {
         code: cleanCode,
         description: formData.description.trim(),

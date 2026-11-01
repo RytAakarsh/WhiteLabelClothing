@@ -1,30 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { verifyAdmin } from '@/lib/auth/admin';
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
-    }
-
-    const adminClient = createAdminClient();
-
-    // Verify admin role
-    const { data: roleData } = await adminClient
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('role', 'admin')
-      .maybeSingle();
-
-    if (!roleData) {
-      return NextResponse.json({ error: 'Forbidden. Admin privileges required.' }, { status: 403 });
+    const auth = await verifyAdmin();
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
     const body = await request.json();
@@ -34,9 +15,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'order_id is required.' }, { status: 400 });
     }
 
-    const adminIdentifier = `Admin (${user.email || user.id})`;
+    const adminIdentifier = `Admin (${auth.user.email || auth.user.id})`;
 
-    await adminClient
+    await auth.client
       .from('orders')
       .update({
         payment_status: 'manual_review',
@@ -46,7 +27,7 @@ export async function POST(request: Request) {
       })
       .eq('id', order_id);
 
-    await adminClient.from('order_status_history').insert({
+    await auth.client.from('order_status_history').insert({
       order_id,
       previous_status: 'awaiting_verification',
       new_status: 'manual_review',
@@ -59,7 +40,7 @@ export async function POST(request: Request) {
       message: 'Order successfully flagged for manual review.',
     });
   } catch (err: any) {
-    console.error('Flag manual review error:', err);
+    console.error('[Admin Flag Review POST] Exception:', err);
     return NextResponse.json({ error: err.message || 'Internal server error.' }, { status: 500 });
   }
 }
