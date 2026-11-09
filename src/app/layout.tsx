@@ -4,6 +4,7 @@ import './globals.css';
 import { AuthProvider } from '@/lib/context/AuthContext';
 import { CartProvider } from '@/lib/context/CartContext';
 import CartDrawer from '@/components/cart/CartDrawer';
+import MetaPixel from '@/components/analytics/MetaPixel';
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -51,6 +52,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${playfair.variable} ${inter.variable}`}>
       <body className="min-h-screen flex flex-col bg-white text-black selection:bg-black selection:text-white">
+        <MetaPixel />
         <AuthProvider>
           <CartProvider>
             {children}
